@@ -19,7 +19,11 @@ Two people on their own phones or laptops. The host picks a side and gets a 4-le
 
 There is no game server. Browsers connect directly over WebRTC using [PeerJS](https://peerjs.com); its free public broker (`0.peerjs.com`) only introduces the two players, and Google's public STUN servers let each browser find its public address. This works on phones (mobile data, home Wi-Fi) but not behind networks that rewrite ports per destination, such as Zscaler on work laptops: even two tabs on one such laptop can't connect. To support those, add a TURN relay at build time with `VITE_TURN_URLS` (comma-separated), `VITE_TURN_USERNAME` and `VITE_TURN_CREDENTIAL`. The host's browser runs the game and the guest's only sends its picks (`src/net/link.ts`, `src/game/online.ts`).
 
-Deploy to Vercel (or any static host) as-is: framework preset Vite, build `npm run build`, output `dist`. Online play needs internet; the booth modes still work offline. To use a self-hosted PeerJS server instead, set `VITE_PEER_HOST` (and optionally `VITE_PEER_PORT`, `VITE_PEER_PATH`) at build time.
+## GitHub Pages deployment
+
+The site is configured for https://hish-l.github.io/savanna-shield/ with Vite's base path set to `/savanna-shield/`. In the repository's **Settings → Pages**, select **GitHub Actions** as the source. Push to `main` to run `.github/workflows/deploy.yml`, which installs dependencies, tests, builds, and publishes `dist`. You can also run it manually from the Actions tab. Publishing from a private personal repository requires GitHub Pro; the deployed site is public.
+
+Online play uses the existing PeerJS Cloud broker and needs no server on GitHub Pages. Players must keep their game tabs open. Restrictive networks may still require a TURN relay. To configure a relay or self-hosted broker, add the corresponding `VITE_*` variables to the workflow's build step environment; Vite embeds those values in the public browser bundle. Online play needs internet; the booth modes still work offline. To use a self-hosted PeerJS server, set `VITE_PEER_HOST` (and optionally `VITE_PEER_PORT`, `VITE_PEER_PATH`) at build time.
 
 ## How scoring works
 
