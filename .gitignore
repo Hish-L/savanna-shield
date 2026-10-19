@@ -1,0 +1,25 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment variables (keep shareable examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Vercel local project metadata
+.vercel/
+
+# Logs
+*.log
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

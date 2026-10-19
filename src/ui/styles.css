@@ -1,0 +1,269 @@
+/* Westpac GEL brand colours (github.com/WestpacGEL/GEL brands/WBC/tokens/colors.js),
+   drawn in a chunky cartoon "sticker" style: thick outlines and solid drop shadows. */
+:root {
+  --wbc-red: #da1710;
+  --wbc-navy: #1f1c4f;
+  --wbc-navy-deep: #110f33;
+  --wbc-light: #f3f4f6;
+  --wbc-text: #181b25;
+  --ranger: var(--wbc-red);
+  --on-ranger: #ffffff;
+  --predator: #a4e02b;
+  --on-predator: var(--wbc-navy-deep);
+  --best: #ffc72c;
+  --panel: rgba(31, 28, 79, 0.92);
+  --sticker: 0 0.4rem 0 var(--wbc-navy-deep), 0 0.9rem 1.8rem rgba(0, 0, 0, 0.35);
+  font-family: 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  color: var(--wbc-light);
+  /* Every size in this file is in rem/em, so the whole UI scales from this one value:
+     ~18px on a 1600×900 laptop, ~22px at 1080p, ~44px on a 4K booth screen.
+     min() of width and height keeps it fitting on both wide and tall displays. */
+  font-size: max(12px, min(1.15vw, 2.05vh));
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; user-select: none; }
+#world, #ui { position: fixed; inset: 0; }
+#ui { pointer-events: none; }
+#ui button, #ui .screen { pointer-events: auto; }
+button { font: inherit; color: inherit; cursor: pointer; }
+kbd {
+  display: inline-grid; place-items: center; min-width: 1.8em; padding: 0.1em 0.4em;
+  border-radius: 0.4em; background: #fff; color: var(--wbc-navy); font: 900 0.85em/1.4 inherit;
+  box-shadow: 0 0.18em 0 var(--wbc-navy-deep);
+}
+
+/* Westpac brand tag: a red pill that appears on every screen. */
+.brand {
+  display: inline-flex; align-items: center; gap: 0.6em; padding: 0.35em 1.1em 0.35em 0.4em;
+  border: 0.18rem solid #fff; border-radius: 999px; background: var(--wbc-red); color: #fff;
+  letter-spacing: 0.02em; box-shadow: 0 0.25em 0 var(--wbc-navy-deep); text-align: left;
+}
+/* White badge holding the official red Westpac logomark. */
+.brand i { display: grid; place-items: center; height: 2.2em; padding: 0 0.7em; border-radius: 999px; background: #fff; }
+.brand svg { display: block; height: 1.2em; width: auto; }
+.brand b { font-size: 1.1em; font-weight: 900; }
+.hud > .brand { position: absolute; top: 1.2rem; left: 1.5rem; font-size: 0.85rem; }
+
+/* ---------- full-screen overlays ---------- */
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.2rem; padding: 2rem 3rem; text-align: center;
+  background: radial-gradient(ellipse at center, rgba(31, 28, 79, 0.3), rgba(17, 15, 51, 0.88));
+  animation: fade-in 0.4s ease;
+}
+.screen > .brand { font-size: 1rem; }
+.title > .brand { font-size: 1.6rem; }
+.screen h1 {
+  margin: 0; font-size: 6.5rem; font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; line-height: 0.95;
+  color: #fff; -webkit-text-stroke: 0.035em var(--wbc-navy); paint-order: stroke fill;
+  text-shadow: 0 0.07em 0 var(--wbc-navy-deep), 0 0.25em 0.8em rgba(0, 0, 0, 0.45);
+}
+.screen h1 span { color: var(--wbc-red); }
+.screen h2 {
+  margin: 0; font-size: 4rem; font-weight: 900;
+  -webkit-text-stroke: 0.03em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
+}
+.tagline, .role { margin: 0; font-size: 1.5rem; font-weight: 600; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.3em; color: var(--predator); font-weight: 900; }
+
+.modes { display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem; }
+.mode {
+  display: grid; gap: 0.3rem; justify-items: center; width: 19rem; padding: 1.2rem 1rem 1.3rem;
+  background: #fff; color: var(--wbc-navy); border: 0.22rem solid var(--wbc-navy); border-radius: 1.2rem;
+  box-shadow: var(--sticker); transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.mode:hover { transform: translateY(-4px) rotate(-1deg); border-color: var(--wbc-red); }
+.mode:active { transform: translateY(3px); box-shadow: 0 0.1rem 0 var(--wbc-navy-deep); }
+.mode kbd { background: var(--wbc-red); color: #fff; }
+.mode b { font-size: 1.4rem; font-weight: 900; }
+.mode small { color: #595767; font-weight: 600; }
+
+.brief { max-width: 40rem; margin: 0; font-size: 1.8rem; font-weight: 700; }
+.controls { display: flex; gap: 1.2rem; font-size: 1.2rem; font-weight: 800; }
+.controls span { padding: 0.5rem 1rem; border-radius: 0.8rem; background: var(--panel); border: 0.18rem solid var(--accent); box-shadow: var(--sticker); }
+.controls .ranger { --accent: var(--ranger); }
+.controls .predator { --accent: var(--predator); }
+.avatar {
+  flex: none; width: 1.8em; height: 1.8em; vertical-align: middle; border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #ffffff, #cfe6ff 70%); border: 0.15rem solid var(--accent, #fff);
+}
+.avatar.hero { --accent: var(--predator); width: 9rem; height: 9rem; border-width: 0.3rem; box-shadow: var(--sticker); }
+.countdown { width: 30rem; height: 0.7rem; border-radius: 1rem; background: var(--wbc-red); border: 0.12rem solid #fff; transform-origin: left; animation: shrink linear forwards; }
+
+/* ---------- in-game HUD ---------- */
+.hud { position: absolute; inset: 0; }
+.topbar { position: absolute; top: 1.2rem; left: 50%; transform: translateX(-50%); width: 30rem; text-align: center; }
+.stage { display: grid; justify-items: center; gap: 0.3rem; }
+.stage small {
+  padding: 0.15em 0.8em; border-radius: 999px; background: var(--wbc-navy); color: #fff;
+  text-transform: uppercase; letter-spacing: 0.2em; font-weight: 800; font-size: 0.8rem;
+}
+.stage b {
+  font-size: 2.2rem; font-weight: 900; text-transform: uppercase; color: #fff;
+  -webkit-text-stroke: 0.06em var(--wbc-navy); paint-order: stroke fill; text-shadow: 0 0.08em 0 var(--wbc-navy-deep);
+}
+.timer { height: 0.8rem; border-radius: 1rem; background: var(--wbc-navy); overflow: hidden; box-shadow: 0 0.2rem 0 var(--wbc-navy-deep); }
+.timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
+.timer .fill.urgent { background: var(--wbc-red); }
+
+.card {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 26rem;
+  display: grid; gap: 0.7rem; padding: 1.2rem; border-radius: 1.4rem; background: var(--panel);
+  border: 0.22rem solid var(--accent); box-shadow: var(--sticker); backdrop-filter: blur(0.35rem);
+  animation: pop-in 0.35s cubic-bezier(0.3, 1.5, 0.6, 1);
+}
+.card.ranger { --accent: var(--ranger); --on-accent: var(--on-ranger); left: 1.5rem; }
+.card.predator { --accent: var(--predator); --on-accent: var(--on-predator); right: 1.5rem; }
+.who { display: flex; align-items: center; gap: 0.7rem; }
+.who .avatar { width: 4.5rem; height: 4.5rem; border-width: 0.18rem; }
+.who b { display: block; font-size: 1.35rem; font-weight: 900; }
+.who small { opacity: 0.8; font-weight: 600; }
+.who .pts {
+  margin-left: auto; min-width: 3.6rem; padding: 0.1rem 0.6rem; border-radius: 0.8rem; text-align: center;
+  font-size: 2rem; font-weight: 900; background: var(--accent); color: var(--on-accent); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
+}
+.prompt { margin: 0.2rem 0; font-size: 1.45rem; font-weight: 800; line-height: 1.25; }
+.opt {
+  position: relative; display: flex; align-items: center; gap: 0.8rem; padding: 0.75rem 0.9rem; text-align: left;
+  font-size: 1.2rem; font-weight: 700; border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.08); border: 0.18rem solid rgba(255, 255, 255, 0.2);
+  transition: background 0.15s, opacity 0.2s, transform 0.1s;
+}
+.opt:hover { background: rgba(255, 255, 255, 0.18); transform: translateX(3px); }
+.opt kbd { background: var(--accent); color: var(--on-accent); }
+.opt em { margin-left: auto; font-style: normal; font-weight: 900; font-size: 1.3rem; }
+.lock {
+  position: absolute; inset: auto 1.2rem 1.2rem; padding: 0.5rem; border-radius: 0.8rem; text-align: center;
+  font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; background: var(--accent); color: var(--on-accent);
+  border: 0.18rem solid #fff; box-shadow: 0 0.25rem 0 var(--wbc-navy-deep);
+  opacity: 0; transform: scale(0.8) rotate(-2deg); transition: opacity 0.2s, transform 0.25s cubic-bezier(0.3, 1.6, 0.6, 1); pointer-events: none;
+}
+/* Locked choices stay hidden so the opponent can't peek on a shared screen. */
+.card.locked .opt, .card.waiting .opt { opacity: 0.25; pointer-events: none; }
+.card.locked .lock, .card.waiting .lock { opacity: 1; transform: rotate(-2deg); }
+.card.ai.waiting .opt span { filter: blur(0.3rem); }
+.card.revealed .opt { pointer-events: none; opacity: 0.45; }
+.card.revealed .opt.best { opacity: 1; border-color: var(--best); }
+.card.revealed .opt.best::after {
+  content: '★ BEST'; position: absolute; top: -0.75rem; right: 0.6rem; padding: 0.05rem 0.5rem; border-radius: 0.4rem;
+  background: var(--best); color: var(--wbc-navy-deep); font-size: 0.75rem; font-weight: 900; box-shadow: 0 0.15rem 0 var(--wbc-navy-deep);
+}
+.card.revealed .opt.chosen { opacity: 1; background: var(--accent); color: var(--on-accent); }
+.card.revealed .opt.chosen kbd { background: #fff; color: var(--wbc-navy); }
+.timeout { color: var(--best); font-weight: 900; }
+
+/* Reveal: cards shrink to a compact strip at the top showing just the pick and points. */
+.card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), width 0.3s, padding 0.3s; }
+.card.revealed { top: 1.2rem; transform: none; width: 22rem; gap: 0.5rem; padding: 0.7rem 0.9rem; }
+.card.revealed .who .avatar { width: 2.6rem; height: 2.6rem; }
+.card.revealed .who b { font-size: 1.05rem; }
+.card.revealed .who small { font-size: 0.8rem; }
+.card.revealed .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
+.card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen) { display: none; }
+.card.revealed .opt.chosen { padding: 0.45rem 0.7rem; font-size: 1rem; }
+.hud > .brand { transition: opacity 0.2s; }
+.revealing > .brand { opacity: 0; }
+
+.banner {
+  position: absolute; left: 50%; bottom: 1.5rem; width: 31rem; transform: translate(-50%, 1rem) scale(0.9); opacity: 0;
+  padding: 1rem 1.3rem; border-radius: 1.2rem; text-align: center; background: var(--panel); border: 0.22rem solid var(--tone, #fff);
+  box-shadow: var(--sticker); transition: opacity 0.2s, transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1);
+}
+.banner.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.banner b {
+  display: block; font-size: 2.6rem; font-weight: 900; text-transform: uppercase; color: var(--tone);
+  -webkit-text-stroke: 0.04em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
+}
+.banner p { margin: 0.4rem 0 0; font-size: 1rem; font-weight: 600; line-height: 1.35; }
+.banner.blocked { --tone: #5fe3ff; }
+.banner.breach { --tone: #ff7a1a; animation: shake 0.4s; }
+.banner.fizzle { --tone: #fff; }
+
+/* ---------- online lobby ---------- */
+.panels { display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center; }
+.panel {
+  display: grid; gap: 0.8rem; align-content: start; width: 24rem; padding: 1.2rem; border-radius: 1.4rem;
+  background: var(--panel); border: 0.22rem solid #fff; box-shadow: var(--sticker);
+}
+.panel h3 { margin: 0; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; }
+.panel p { margin: 0; font-weight: 600; opacity: 0.85; }
+.panel .mode { width: 100%; }
+.mode.side { grid-template-columns: auto 1fr; justify-items: start; align-items: center; column-gap: 0.8rem; padding: 0.8rem 1rem; text-align: left; }
+.mode.side .avatar { grid-row: span 2; width: 3rem; height: 3rem; }
+.mode.side.ranger { --accent: var(--ranger); }
+.mode.side.predator { --accent: var(--predator); }
+.join { display: grid; gap: 0.8rem; }
+.code-input {
+  width: 100%; padding: 0.4rem; border-radius: 1rem; border: 0.22rem solid var(--wbc-navy); background: #fff; color: var(--wbc-navy);
+  font-family: inherit; font-size: 2.6rem; font-weight: 900; line-height: 1; letter-spacing: 0.35em; text-indent: 0.35em; text-align: center; text-transform: uppercase;
+  user-select: text; box-shadow: var(--sticker);
+}
+.code-input::placeholder { color: #c9c8d4; }
+.code-input:focus { outline: none; border-color: var(--wbc-red); }
+.code-input.invalid { border-color: var(--wbc-red); animation: shake-x 0.3s; }
+.room-code {
+  padding: 0.2rem 0.8rem 0.2rem 1.2rem; border-radius: 1.4rem; background: #fff; color: var(--wbc-navy);
+  font-size: 6rem; font-weight: 900; letter-spacing: 0.25em; box-shadow: var(--sticker); user-select: text;
+}
+.mode.share { width: auto; min-width: 19rem; }
+.waiting { margin: 0; font-size: 1.5rem; font-weight: 800; animation: pulse 1.6s infinite; }
+.link-button {
+  padding: 0.5rem 1.4rem; border-radius: 999px; background: transparent; border: 0.18rem solid rgba(255, 255, 255, 0.6);
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+}
+.link-button:hover { border-color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* ---------- debrief ---------- */
+.debrief.ranger h2 { color: var(--ranger); }
+.debrief.predator h2 { color: var(--predator); }
+.finals { display: flex; gap: 1.5rem; }
+.finals div { display: grid; min-width: 10rem; padding: 0.6rem 1.4rem; border-radius: 1.2rem; background: var(--panel); border: 0.22rem solid var(--accent); box-shadow: var(--sticker); }
+.finals small { font-weight: 700; }
+.finals .avatar { width: 2.8rem; height: 2.8rem; margin-right: 0.3rem; }
+.finals b { font-size: 3.2rem; font-weight: 900; color: var(--accent); }
+.finals .ranger { --accent: var(--ranger); }
+.finals .predator { --accent: var(--predator); }
+.debrief h3 { margin: 0.5rem 0 0; text-transform: uppercase; letter-spacing: 0.15em; font-size: 1rem; }
+.lessons { display: grid; gap: 0.7rem; max-width: 52rem; margin: 0; padding: 0; list-style: none; text-align: left; }
+.lessons li { display: grid; gap: 0.2rem; padding: 0.8rem 1rem; border-left: 0.35rem solid var(--wbc-red); border-radius: 0.8rem; background: var(--panel); box-shadow: 0 0.25rem 0 var(--wbc-navy-deep); }
+.lessons b { color: var(--best); }
+.again { margin: 0.5rem 0 0; font-weight: 700; animation: pulse 1.6s infinite; }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-50%) scale(0.85); } }
+@keyframes shrink { to { transform: scaleX(0); } }
+@keyframes pulse { 50% { opacity: 0.35; } }
+@keyframes shake-x { 25% { transform: translateX(-0.4rem); } 75% { transform: translateX(0.4rem); } }
+@keyframes shake { 25% { transform: translate(-52%, 0); } 75% { transform: translate(-48%, 0); } }
+
+/* Portrait / small screens: stack the cards. */
+@media (max-aspect-ratio: 1/1) {
+  :root { font-size: max(12px, 2.2vw); }
+  .topbar { width: 90vw; top: 8vh; }
+  .card { top: auto; transform: none; width: 47vw; bottom: 1vh; padding: 0.8rem; animation: none; }
+  .card.ranger { left: 1.5vw; }
+  .card.predator { right: 1.5vw; }
+  /* Cards sit up top during the reveal, so the verdict goes underneath the map. */
+  .banner { width: 90vw; bottom: max(1vh, env(safe-area-inset-bottom)); }
+  .card.revealed { top: 1vh; bottom: auto; width: 47vw; }
+  .card.revealed .who small { display: none; }
+  .revealing .topbar { opacity: 0; }
+
+  /* Online on a phone: your card fills the width, the opponent shrinks to a status strip up top. */
+  :root:has(.hud.online) { font-size: max(14px, 3.6vw); }
+  .online .card:not(.ai):not(.revealed) { left: 2vw; right: 2vw; width: auto; bottom: max(2vw, env(safe-area-inset-bottom)); }
+  .online .card.ai:not(.revealed) { top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; padding: 0.5rem 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
+  .online .card.ai:not(.revealed) .who { flex: 1; }
+  .online .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
+  .online .card.ai:not(.revealed) .who small, .online .card.ai:not(.revealed) .who .pts { display: none; }
+  .online .card.ai:not(.revealed) :is(.timer, .prompt, .opt) { display: none; }
+  .online .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
+  .online .topbar { top: 6.4rem; }
+  .online .stage b { font-size: 1.6rem; }
+  .online .card.revealed { width: 47vw; }
+  .screen { justify-content: safe center; overflow-y: auto; padding: 2rem 1.2rem; }
+  .online > .brand { display: none; }
+  .panel { width: 100%; }
+  .room-code { font-size: 4.5rem; }
+}
