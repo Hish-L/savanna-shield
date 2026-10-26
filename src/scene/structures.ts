@@ -1,11 +1,56 @@
 import * as THREE from 'three';
 import { heightAt } from './terrain';
+import { ranger } from './actors/models';
+import { nav, type Body } from './nav';
 import { box, canvasTexture, damp } from './util';
 
 const wood = new THREE.MeshStandardMaterial({ color: '#7a5a3a', flatShading: true });
-const thatch = new THREE.MeshStandardMaterial({ color: '#c9a04f', flatShading: true });
+const poleWood = new THREE.MeshStandardMaterial({ color: '#6e5136', flatShading: true });
+const lampMetal = new THREE.MeshStandardMaterial({ color: '#2b2b30', metalness: 0.5, roughness: 0.5, flatShading: true });
 
-/** Watchtower = security monitoring. Its searchlight sweeps faster and brighter on alert. */
+/** Woven reed screen with an ochre band of Ndebele-style triangles, repeated along each side of the lookout. */
+const reedScreen = canvasTexture(
+  512,
+  (ctx) => {
+    for (let x = 0; x < 512; x += 4) {
+      ctx.fillStyle = ['#d9b56a', '#c9a35a', '#b8914c'][(x / 4) % 3];
+      ctx.fillRect(x, 0, 4, 64);
+    }
+    ctx.fillStyle = '#a8432a';
+    ctx.fillRect(0, 24, 512, 18);
+    for (let x = 0; x < 512; x += 32) {
+      ctx.fillStyle = '#1c1c1c';
+      ctx.beginPath();
+      ctx.moveTo(x, 42);
+      ctx.lineTo(x + 16, 24);
+      ctx.lineTo(x + 32, 42);
+      ctx.fill();
+      ctx.fillStyle = '#f4f1ea';
+      ctx.beginPath();
+      ctx.moveTo(x + 10, 42);
+      ctx.lineTo(x + 16, 35);
+      ctx.lineTo(x + 22, 42);
+      ctx.fill();
+    }
+  },
+  64,
+);
+
+/** A rough round pole from `from` to `to`, tapering slightly toward `to`. */
+function stick(from: THREE.Vector3, to: THREE.Vector3, radius: number, material: THREE.Material): THREE.Mesh {
+  const dir = to.clone().sub(from);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.8, radius, dir.length(), 6), material);
+  mesh.position.copy(from).add(to).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  mesh.castShadow = true;
+  return mesh;
+}
+
+/**
+ * Watchtower = security monitoring: a bush lookout of lashed poles and an open, reed-screened
+ * platform where the Chief Ranger keeps watch behind a post-mounted searchlight. He swings round
+ * with the light, which sweeps faster and brighter on alert.
+ */
 export class Watchtower {
   readonly group = new THREE.Group();
   private readonly beamMaterial = new THREE.MeshBasicMaterial({
@@ -18,7 +63,9 @@ export class Watchtower {
   });
   private readonly beam: THREE.Mesh;
   private readonly light = new THREE.SpotLight('#fff1c0', 0, 60, 0.32, 0.5, 1.2);
-  private readonly lamp = new THREE.Vector3(0, 6.9, 0);
+  /** The Chief Ranger and the searchlight, turning together on the platform. */
+  private readonly lookout = new THREE.Group();
+  private readonly lamp: THREE.Vector3;
   private angle = 0;
   private alertLevel = 0;
   private alertHold = 0;
@@ -26,28 +73,79 @@ export class Watchtower {
 
   constructor(position: THREE.Vector3) {
     this.group.position.copy(position);
-    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      const leg = box(0.22, 6.4, 0.22, wood);
-      leg.position.set(x * 0.9, 3.2, z * 0.9);
-      leg.rotation.set(z * 0.06, 0, -x * 0.06);
-      this.group.add(leg);
-    }
-    const deck = box(2.6, 0.25, 2.6, wood);
-    deck.position.y = 6.3;
+    nav.addObstacle(position, 2.1); // splayed legs and the ladder foot
+    // Square to the waterhole, so the ladder side faces it.
+    this.group.rotation.y = Math.atan2(-position.x, -position.z);
+    const deckY = 6.3;
+    // Four poles splay out toward the ground and carry the open platform.
+    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    const at = (corner: number[], y: number, lean = 0) => {
+      const spread = 1.15 - (0.4 * y) / deckY;
+      return new THREE.Vector3(corner[0] * spread + lean, y, corner[1] * spread - lean);
+    };
+    corners.forEach((corner, i) => {
+      const lean = (i % 2 ? 1 : -1) * 0.06; // not quite straight, like cut saplings
+      this.group.add(stick(at(corner, 0), at(corner, deckY, lean), 0.16, poleWood));
+      // Lashed X-bracing and a rail between this pole and the next.
+      const next = corners[(i + 1) % 4];
+      this.group.add(
+        stick(at(corner, 0.7), at(next, 3.6), 0.06, poleWood),
+        stick(at(next, 0.7), at(corner, 3.6), 0.06, poleWood),
+        stick(at(corner, 3.6), at(next, 3.6), 0.07, poleWood),
+      );
+    });
+
+    // Square plank deck with a reed screen on each side, capped by a pole rail and corner posts.
+    const half = 1.45;
+    // Dark planks so the khaki-and-red lookout stands out against them from the camera above.
+    const deck = box(half * 2 + 0.2, 0.22, half * 2 + 0.2, new THREE.MeshStandardMaterial({ color: '#4a3420', flatShading: true }));
+    deck.position.y = deckY;
     this.group.add(deck);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.5, 4), thatch);
-    roof.position.y = 8.3;
-    roof.rotation.y = Math.PI / 4;
-    roof.castShadow = true;
-    this.group.add(roof);
+    const screenMap = reedScreen.clone();
+    screenMap.wrapS = THREE.RepeatWrapping;
+    screenMap.repeat.x = 6 / 16; // six whole triangles per side
+    const screenMaterial = new THREE.MeshStandardMaterial({ map: screenMap, side: THREE.DoubleSide });
+    for (let i = 0; i < 4; i++) {
+      const side = new THREE.Group();
+      side.rotation.y = (i * Math.PI) / 2;
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 0.85), screenMaterial);
+      screen.position.set(0, deckY + 0.53, half);
+      screen.castShadow = true;
+      const rail = stick(new THREE.Vector3(-half, deckY + 0.95, half), new THREE.Vector3(half, deckY + 0.95, half), 0.07, poleWood);
+      const post = stick(new THREE.Vector3(half, deckY, half), new THREE.Vector3(half, deckY + 1.05, half), 0.09, poleWood);
+      side.add(screen, rail, post);
+      this.group.add(side);
+    }
+
+    // The Chief Ranger stands at the back of the platform behind a searchlight on a short post.
+    const chief = ranger(true).root;
+    chief.scale.multiplyScalar(1.2); // a touch larger than life so he reads from across the reserve
+    chief.position.set(0, deckY + 0.11, -0.35);
+    const post = stick(new THREE.Vector3(0, deckY + 0.11, 0.55), new THREE.Vector3(0, deckY + 1.15, 0.55), 0.05, poleWood);
+    const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4, 10).rotateX(Math.PI / 2), lampMetal);
+    housing.position.set(0, deckY + 1.3, 0.6);
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(0.18, 10), new THREE.MeshBasicMaterial({ color: '#fff6cf' }));
+    glass.position.set(0, deckY + 1.3, 0.81);
+    this.lookout.add(chief, post, housing, glass);
+    this.group.add(this.lookout);
+    this.lamp = new THREE.Vector3(0, deckY + 1.3, 0.85);
+
+    // Pole ladder up to the platform, on the side facing the waterhole.
+    const ladder = new THREE.Group();
+    const foot = 2.4;
+    const top = half + 0.15; // just outside the reed screen
+    for (const x of [-0.28, 0.28]) ladder.add(stick(new THREE.Vector3(x, 0, foot), new THREE.Vector3(x, deckY + 0.4, top), 0.06, poleWood));
+    for (let y = 0.5; y < deckY; y += 0.55) {
+      const z = foot + ((top - foot) * y) / (deckY + 0.4);
+      ladder.add(stick(new THREE.Vector3(-0.3, y, z), new THREE.Vector3(0.3, y, z), 0.035, poleWood));
+    }
+    this.group.add(ladder);
 
     const length = 16;
     this.beam = new THREE.Mesh(
       new THREE.ConeGeometry(2.6, length, 20, 1, true).translate(0, -length / 2, 0).rotateX(-Math.PI / 2),
       this.beamMaterial,
     );
-    this.beam.position.copy(this.lamp);
-    this.light.position.copy(this.lamp);
     this.group.add(this.beam, this.light, this.light.target);
   }
 
@@ -66,9 +164,14 @@ export class Watchtower {
     const world = this.focus && this.alertLevel > 0.3 ? this.focus : sweep;
     const local = this.group.worldToLocal(world.clone());
     local.y = heightAt(world.x, world.z) - this.group.position.y;
+    // Turn the lookout to face the target; the beam comes out of the lamp wherever that now is.
+    this.lookout.rotation.y = Math.atan2(local.x, local.z);
+    const lamp = this.lamp.clone().applyEuler(this.lookout.rotation);
+    this.beam.position.copy(lamp);
+    this.light.position.copy(lamp);
     this.light.target.position.copy(local);
     this.beam.lookAt(this.group.localToWorld(local.clone()));
-    this.beam.scale.z = local.distanceTo(this.lamp) / 16;
+    this.beam.scale.z = local.distanceTo(lamp) / 16;
     this.beamMaterial.opacity = 0.1 + this.alertLevel * 0.25;
     this.light.intensity = 120 + this.alertLevel * 380;
   }
@@ -86,8 +189,9 @@ export function createStation(position: THREE.Vector3): THREE.Group {
   const roof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.6, 10), new THREE.MeshStandardMaterial({ color: '#da1710', flatShading: true }));
   roof.position.y = 2.6;
   roof.castShadow = true;
-  const door = box(0.6, 1.1, 0.12, new THREE.MeshStandardMaterial({ color: '#1f1c4f', flatShading: true }));
-  door.position.set(0, 0.55, 1.62);
+  // Unlit so it reads as solid black; set out far enough that the flared wall's corner can't poke through.
+  const door = box(0.6, 1.1, 0.12, new THREE.MeshBasicMaterial({ color: '#000' }));
+  door.position.set(0, 0.55, 1.72);
   const antenna = box(0.08, 2, 0.08, wood);
   antenna.position.set(0.6, 3.6, 0);
   hut.add(walls, roof, door, antenna);
@@ -101,6 +205,7 @@ export function createStation(position: THREE.Vector3): THREE.Group {
   hut.position.copy(position);
   hut.rotation.y = Math.atan2(-position.x, -position.z);
   hut.scale.setScalar(1.35);
+  nav.addObstacle(position, 1.7 * 1.35);
   return hut;
 }
 
@@ -131,9 +236,15 @@ function policeLivery(): THREE.CanvasTexture {
   });
 }
 
-/** Police van = incident response. Drives out toward the threat and back, lights flashing. */
-export class Jeep {
+/**
+ * Police van = incident response. Drives out toward the threat and back, lights flashing, steering
+ * round the pond and buildings; animals in its way are shoved aside.
+ */
+export class Jeep implements Body {
   readonly group = new THREE.Group();
+  readonly radius = 1.9;
+  readonly heavy = true;
+  private readonly heading = new THREE.Vector3();
   private readonly home: THREE.Vector3;
   private target: THREE.Vector3 | null = null;
   private returning = false;
@@ -148,6 +259,7 @@ export class Jeep {
   constructor(home: THREE.Vector3) {
     this.home = home.clone();
     this.group.position.copy(home);
+    nav.addMover(this);
     // Model faces +z: a high-roof white van with a short nose.
     const white = new THREE.MeshStandardMaterial({ color: '#f4f6f8', flatShading: true });
     const dark = new THREE.MeshStandardMaterial({ color: '#222222', flatShading: true });
@@ -203,9 +315,13 @@ export class Jeep {
     }
   }
 
+  get position(): THREE.Vector3 {
+    return this.group.position;
+  }
+
   /** Drive to the target, stand guard there for `linger` seconds, then return home. */
   dispatch(target: THREE.Vector3, linger: number): void {
-    this.target = target.clone();
+    this.target = nav.clearSpot(target.clone(), this.radius);
     this.returning = false;
     this.linger = linger;
   }
@@ -235,9 +351,12 @@ export class Jeep {
       return;
     }
     const step = Math.min(distance, dt * 13);
-    to.normalize();
-    this.group.position.addScaledVector(to, step);
+    const dir = nav.heading(this, this.target, this.heading);
+    this.group.position.addScaledVector(dir, step);
+    nav.separate(this);
     this.group.position.y = heightAt(this.group.position.x, this.group.position.z);
-    this.group.rotation.y = Math.atan2(to.x, to.z);
+    // Turn into the new heading quickly but not instantly, like a vehicle.
+    const turn = Math.atan2(dir.x, dir.z) - this.group.rotation.y;
+    this.group.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * (1 - Math.exp(-10 * dt));
   }
 }

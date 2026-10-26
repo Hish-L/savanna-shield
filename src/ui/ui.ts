@@ -1,5 +1,5 @@
 import { LOGO_SVG } from '../brand';
-import { DEFENDER_TITLE, DEBRIEF_SECONDS, ROUND_SECONDS } from '../config';
+import { DEFENDER_TITLE, ROUND_SECONDS } from '../config';
 import { bestOption, type RoundResult } from '../game/scoring';
 import type { Mode, Option, Round, Scenario, Side } from '../game/types';
 import { CODE_LENGTH, normalizeCode } from '../net/link';
@@ -24,8 +24,11 @@ export interface Played {
 
 export const isHuman = (mode: Mode, side: Side) => mode === 'duel' || mode === `solo-${side}` || mode === `online-${side}`;
 export const isOnline = (mode: Mode) => mode.startsWith('online-');
-/** The one side this device plays, or null when both players share the screen. */
-export const localSide = (mode: Mode): Side | null => (mode === 'duel' ? null : isHuman(mode, 'ranger') ? 'ranger' : 'predator');
+/** The one side this device plays, or null when both sides show on this screen. */
+export const localSide = (mode: Mode): Side | null => (mode === 'duel' || mode === 'teams' ? null : isHuman(mode, 'ranger') ? 'ranger' : 'predator');
+
+/** Team Battle lobby slot state. */
+export type SlotState = 'open' | 'joined' | 'away';
 
 /** What the player picked on the online menu. */
 export type Choice = { kind: 'host'; side: Side } | { kind: 'join'; code: string };
@@ -56,11 +59,12 @@ export class UI {
       { mode: 'solo-ranger', key: '2', label: 'Play the Ranger', sub: 'Defend against the computer' },
       { mode: 'solo-predator', key: '3', label: 'Play the Predator', sub: 'Think like an attacker' },
       { mode: 'online', key: '4', label: 'Play Online', sub: '2 players, 2 devices' },
+      { mode: 'teams', key: '5', label: 'Team Battle', sub: '2 teams, 1 phone each' },
     ];
     this.root.innerHTML = `
       <div class="screen title">
         ${BRAND}
-        <h1>Savanna <span>Shield</span></h1>
+        <h1>Savannah <span>Shield</span></h1>
         <p class="tagline">Defend the watering hole, or raid it. 10 rounds, ${ROUND_SECONDS} seconds each.</p>
         <div class="modes">
           ${modes.map((m) => `<button class="mode" data-mode="${m.mode}"><kbd>${m.key}</kbd><b>${m.label}</b><small>${m.sub}</small></button>`).join('')}
@@ -83,7 +87,7 @@ export class UI {
   briefing(scenario: Scenario, mode: Mode, seconds: number): void {
     const p = scenario.predator;
     const controls = (side: Side) =>
-      isOnline(mode) ? (isHuman(mode, side) ? 'You' : 'Opponent') : isHuman(mode, side) ? KEYS[side].join(' ') : 'Computer';
+      mode === 'teams' ? 'Phone' : isOnline(mode) ? (isHuman(mode, side) ? 'You' : 'Opponent') : isHuman(mode, side) ? KEYS[side].join(' ') : 'Computer';
     this.root.innerHTML = `
       <div class="screen briefing">
         ${BRAND}
@@ -105,16 +109,17 @@ export class UI {
     const p = scenario.predator;
     const card = (side: Side, who: Portrait, name: string, sub: string) => `
       <section class="card ${side} ${isHuman(mode, side) ? '' : 'ai'}">
+        <div class="status-chip">${side === 'ranger' ? 'Defending' : 'Attacking'}\u2026</div>
         <div class="who">${this.avatar(who)}<div><b>${esc(name)}</b><small>${esc(sub)}</small></div><div class="pts">${totals[side]}</div></div>
         <div class="timer"><div class="fill"></div></div>
         <p class="prompt">${esc(round[side].prompt)}</p>
         ${options[side]
-          .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
+          .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : mode === 'teams' ? 'ABC'[i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
           .join('')}
-        <div class="lock">${isHuman(mode, side) ? 'Locked in' : isOnline(mode) ? 'Opponent is choosing…' : 'Computer is thinking…'}</div>
+        <div class="lock">${isHuman(mode, side) ? 'Locked in' : mode === 'teams' ? 'Team is choosing…' : isOnline(mode) ? 'Opponent is choosing…' : 'Computer is thinking…'}</div>
       </section>`;
     this.root.innerHTML = `
-      <div class="hud ${isOnline(mode) ? 'online' : ''}">
+      <div class="hud ${isOnline(mode) ? 'online' : ''} ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
           <div class="stage"><small>Round ${index + 1} / ${scenario.rounds.length}</small><b>${esc(round.stage)}</b></div>
@@ -168,6 +173,92 @@ export class UI {
     const banner = this.root.querySelector('.banner')!;
     banner.className = `banner show ${kind}`;
     banner.innerHTML = `<b>${label}</b><p>${esc(round.note)}</p>`;
+  }
+
+  /**
+   * Ends the reveal with a Continue prompt and resolves when Space is pressed or it's tapped.
+   * An online guest only sees a waiting message, since the host starts the next round.
+   * Aborting `signal` stops listening (the promise then never resolves).
+   */
+  continueAfterReveal(guest = false, signal?: AbortSignal): Promise<void> {
+    const banner = this.root.querySelector('.banner')!;
+    if (guest) {
+      banner.insertAdjacentHTML('beforeend', `<p class="again">Waiting for your opponent…</p>`);
+      return Promise.resolve();
+    }
+    banner.insertAdjacentHTML('beforeend', `<button class="link-button next"><kbd>Space</kbd> Continue</button>`);
+    return this.onSpace(banner.querySelector('.next')!, signal);
+  }
+
+  /** Team Battle: shows which teams have tapped Next on their phones. */
+  teamContinue(ready: Record<Side, boolean>): void {
+    const banner = this.root.querySelector('.banner');
+    if (!banner) return;
+    let votes = banner.querySelector('.votes');
+    if (!votes) {
+      banner.querySelector('.next')?.insertAdjacentHTML('beforebegin', '<p class="votes"></p>');
+      votes = banner.querySelector('.votes')!;
+    }
+    const tag = (side: Side, name: string) => `<span class="${side} ${ready[side] ? 'ready' : ''}">${name} ${ready[side] ? '✓ ready' : '· tap Next'}</span>`;
+    votes.innerHTML = `${tag('ranger', 'Ranger')}${tag('predator', 'Predator')}`;
+  }
+
+  /** Team Battle: flags a team whose phone has dropped. */
+  seatStatus(side: Side, away: boolean): void {
+    const card = this.root.querySelector(`.card.${side}`);
+    if (!card) return;
+    card.classList.toggle('away', away);
+    card.querySelector('.away-badge')?.remove();
+    if (away) card.querySelector('.who')?.insertAdjacentHTML('afterend', '<div class="away-badge">📵 Phone reconnecting…</div>');
+  }
+
+  /** Team Battle waiting room: QR code for the phones and the two team slots. */
+  teamLobby(playUrl: string, qrSvg: string, slots: Record<Side, SlotState>, onBack: () => void): void {
+    const label: Record<SlotState, string> = { open: 'Scan to join', joined: 'Ready', away: 'Reconnecting…' };
+    const slot = (side: Side, name: string, who: Portrait) =>
+      `<div class="slot ${side} ${slots[side]}">${this.avatar(who)}<b>${name}</b><small>${label[slots[side]]}</small></div>`;
+    const waitingFor = (['ranger', 'predator'] as const).filter((s) => slots[s] === 'open');
+    this.root.innerHTML = `
+      <div class="screen team-lobby">
+        ${BRAND}
+        <h2>Team Battle</h2>
+        <p class="role">One phone per team. Talk it over, then tap your answer.</p>
+        <div class="join-row">
+          <div class="qr">${qrSvg}</div>
+          <div class="slots">
+            ${slot('ranger', 'Ranger team', 'ranger')}
+            ${slot('predator', 'Predator team', 'hyena')}
+          </div>
+        </div>
+        <p class="url">${esc(playUrl.replace(/^https?:\/\//, ''))}</p>
+        <p class="waiting">${waitingFor.length ? `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
+        <button class="link-button back"><kbd>Esc</kbd> Back</button>
+      </div>`;
+    this.root.querySelector<HTMLButtonElement>('.back')!.onclick = onBack;
+  }
+
+  /** Resolves on a Space key press or a tap on `target`. Aborting `signal` removes the listeners. */
+  private onSpace(target: Element, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        window.removeEventListener('keydown', onKey);
+        target.removeEventListener('pointerdown', done);
+        signal?.removeEventListener('abort', stop);
+        resolve();
+      };
+      const stop = () => {
+        window.removeEventListener('keydown', onKey);
+        target.removeEventListener('pointerdown', done);
+      };
+      signal?.addEventListener('abort', stop, { once: true });
+      const onKey = (e: KeyboardEvent) => {
+        if (e.code !== 'Space' || e.repeat) return;
+        e.preventDefault();
+        done();
+      };
+      window.addEventListener('keydown', onKey);
+      target.addEventListener('pointerdown', done);
+    });
   }
 
   /** Host or join an online game. Resolves null on Back. */
@@ -227,7 +318,7 @@ export class UI {
     const share = this.root.querySelector<HTMLButtonElement>('.share')!;
     share.onclick = async () => {
       try {
-        if (canShare) await navigator.share({ title: 'Savanna Shield', text: `Join my Savanna Shield game: ${code}`, url });
+        if (canShare) await navigator.share({ title: 'Savannah Shield', text: `Join my Savannah Shield game: ${code}`, url });
         else {
           await navigator.clipboard.writeText(url);
           share.querySelector('b')!.textContent = 'Link copied!';
@@ -261,7 +352,7 @@ export class UI {
     return new Promise((resolve) => (this.root.querySelector<HTMLButtonElement>('.ok')!.onclick = () => resolve()));
   }
 
-  debrief(scenario: Scenario, mode: Mode, totals: Totals, played: Played[]): Promise<void> {
+  debrief(scenario: Scenario, mode: Mode, totals: Totals, played: Played[], signal?: AbortSignal): Promise<void> {
     const winner: Side | 'draw' = totals.ranger > totals.predator ? 'ranger' : totals.predator > totals.ranger ? 'predator' : 'draw';
     const headline = {
       ranger: ['Ranger wins!', 'The watering hole is safe and the herd grazes on.'],
@@ -270,7 +361,7 @@ export class UI {
     }[winner];
     const missed = played.filter((p) => p.result.ranger !== bestOption(p.round.ranger));
     const lessons = (missed.length ? missed : played).slice(0, 3);
-    const youWon = mode === 'duel' || winner === 'draw' ? '' : isHuman(mode, winner) ? 'You won! ' : isOnline(mode) ? 'Your opponent won. ' : 'The computer won. ';
+    const youWon = !localSide(mode) || winner === 'draw' ? '' : isHuman(mode, winner) ? 'You won! ' : isOnline(mode) ? 'Your opponent won. ' : 'The computer won. ';
     this.root.innerHTML = `
       <div class="screen debrief ${winner}">
         ${BRAND}
@@ -284,24 +375,17 @@ export class UI {
         <ol class="lessons">
           ${lessons.map((p) => `<li><b>${esc(p.round.stage)}: ${esc(bestOption(p.round.ranger).text)}</b><span>${esc(p.round.note)}</span></li>`).join('')}
         </ol>
-        <p class="again">${isOnline(mode) ? 'Tap for a rematch' : 'Press any key or tap to play again'}</p>
+        <p class="again">${
+          mode === 'teams'
+            ? 'Tap <b>Rematch</b> on both phones to play again · <kbd>Esc</kbd> next teams'
+            : `Press <kbd>Space</kbd> or tap ${isOnline(mode) ? 'for a rematch' : 'to play again'}`
+        }</p>
       </div>`;
-    return new Promise((resolve) => {
-      let finished = false;
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        window.removeEventListener('keydown', finish);
-        this.root.removeEventListener('pointerdown', finish);
-        clearTimeout(timeout);
-        resolve();
-      };
-      // A short grace period so a late answer key-press doesn't skip the debrief.
+    // A short grace period so a double press of Space on the last reveal doesn't skip the debrief.
+    return new Promise((resolve) =>
       setTimeout(() => {
-        window.addEventListener('keydown', finish);
-        this.root.addEventListener('pointerdown', finish);
-      }, 2500);
-      const timeout = setTimeout(finish, DEBRIEF_SECONDS * 1000);
-    });
+        if (!signal?.aborted) resolve(this.onSpace(this.root, signal));
+      }, 2500),
+    );
   }
 }

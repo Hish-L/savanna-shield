@@ -24,6 +24,9 @@ function bannerTexture(): THREE.CanvasTexture {
     (ctx) => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
+      // Faint seams where the fabric panels are sewn together.
+      ctx.fillStyle = 'rgba(31, 28, 79, 0.07)';
+      for (let x = width / 8; x < width; x += width / 8) ctx.fillRect(x - 1, 0, 2, height);
       ctx.fillStyle = '#da1710';
       ctx.fillRect(0, 0, width, 12);
       ctx.fillRect(0, height - 12, width, 12);
@@ -37,18 +40,42 @@ function bannerTexture(): THREE.CanvasTexture {
   );
 }
 
+/** A straight line of rope (or a pole) from `a` to `b`. */
+function rope(a: THREE.Vector3, b: THREE.Vector3, material: THREE.Material, radius = 0.015): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, a.distanceTo(b), 4), material);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  return mesh;
+}
+
 function livery(): THREE.CanvasTexture {
-  // Logo with "RESCUE" underneath, on a transparent background, for the cabin sides.
-  return canvasTexture(512, (ctx) => {
-    drawLogo(ctx, 76, 120, 360);
-    ctx.font = '900 92px "Avenir Next", "Segoe UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#ffffff';
-    ctx.strokeText('RESCUE', 256, 380);
-    ctx.fillStyle = '#da1710';
-    ctx.fillText('RESCUE', 256, 380);
-  });
+  // A white pill with the logo, "WESTPAC" and a big "RESCUE", so it pops off the red cabin.
+  // 1024 x 284 roughly matches the shape of the cabin patch it wraps onto.
+  const width = 1024;
+  const height = 284;
+  return canvasTexture(
+    width,
+    (ctx) => {
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#1f1c4f';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.roundRect(10, 10, width - 20, height - 20, (height - 20) / 2);
+      ctx.fill();
+      ctx.stroke();
+      drawLogo(ctx, 80, 82, 290);
+      const font = '"Avenir Next", "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#da1710';
+      ctx.font = `900 92px ${font}`;
+      ctx.fillText('WESTPAC', 680, 92, 540);
+      ctx.fillStyle = '#1f1c4f';
+      ctx.font = `900 124px ${font}`;
+      ctx.fillText('RESCUE', 680, 192, 540);
+    },
+    height,
+  );
 }
 
 export class Helicopter {
@@ -56,6 +83,8 @@ export class Helicopter {
   private readonly rotor = new THREE.Group();
   private readonly tailRotor = new THREE.Group();
   private readonly banner = new THREE.Group();
+  /** The banner's two fabric panels, with their flat rest positions to ripple from. */
+  private readonly cloth: { geometry: THREE.BufferGeometry; rest: Float32Array }[] = [];
   private readonly beacon = new THREE.MeshStandardMaterial({ color: '#330000', emissive: '#ff2020', emissiveIntensity: 0 });
   private phase: Phase = 'away';
   private timer = FIRST_VISIT;
@@ -123,13 +152,24 @@ export class Helicopter {
       this.group.add(skid, strutA, strutB);
     }
 
-    // Westpac logo + RESCUE on both cabin sides.
-    const decal = new THREE.MeshStandardMaterial({ map: livery(), transparent: true, alphaTest: 0.4 });
-    for (const side of [-1, 1]) {
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), decal);
-      plate.position.set(side * 1.07, -0.05, -0.15);
-      plate.rotation.y = (side * Math.PI) / 2;
-      this.group.add(plate);
+    // Westpac Rescue livery on both cabin sides: like the windscreen, a patch of the cabin's own
+    // 12 x 8 sphere grid (3 columns by the upper 2 rows above the yellow belly) scaled out a touch,
+    // so it hugs the body. It runs nose to tail on each side, and is a little self-lit so it reads
+    // white even on the shaded side.
+    const logo = livery();
+    const decal = new THREE.MeshStandardMaterial({
+      map: logo,
+      emissiveMap: logo,
+      emissive: '#ffffff',
+      emissiveIntensity: 0.3,
+      transparent: true,
+      alphaTest: 0.4,
+      flatShading: true,
+    });
+    for (const phiStart of [(5 * Math.PI) / 6, -Math.PI / 3]) {
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(1, 3, 2, phiStart, Math.PI / 2, Math.PI / 4, Math.PI / 4), decal);
+      patch.scale.set(1.05 * 1.02, 0.95 * 1.02, 1.9 * 1.02);
+      this.group.add(patch);
     }
 
     const light = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), this.beacon);
@@ -140,28 +180,40 @@ export class Helicopter {
       if (o instanceof THREE.Mesh) o.castShadow = true;
     });
 
-    // Towed banner on a line from the belly. Two back-to-back panels, so the slogan reads left to
-    // right from either side; the group pivots at the leading edge so it can sway on the line.
-    // A little self-lighting keeps the fabric reading white even on the shaded side.
+    // Towed banner, rigged like a real aerial banner: a weighted lead pole keeps the leading edge
+    // upright, a two-line bridle joins it to a long, slightly sagging tow rope, and the fabric
+    // ripples (see flutter). Two back-to-back panels deform together, so the slogan reads left to
+    // right from either side. A little self-lighting keeps the fabric reading white in shade.
     const print = bannerTexture();
-    const fabric = new THREE.MeshStandardMaterial({ map: print, emissiveMap: print, emissive: '#ffffff', emissiveIntensity: 0.35 });
+    const fabric = new THREE.MeshStandardMaterial({ map: print, emissiveMap: print, emissive: '#ffffff', emissiveIntensity: 0.3 });
     for (const side of [-1, 1]) {
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(BANNER_LENGTH, BANNER_HEIGHT), fabric);
-      panel.rotation.y = (side * Math.PI) / 2;
-      panel.position.set(side * 0.01, 0, -BANNER_LENGTH / 2);
+      const geometry = new THREE.PlaneGeometry(BANNER_LENGTH, BANNER_HEIGHT, 60, 6)
+        .rotateY((side * Math.PI) / 2)
+        .translate(side * 0.01, 0, -BANNER_LENGTH / 2);
+      this.cloth.push({ geometry, rest: Float32Array.from(geometry.attributes.position.array) });
+      const panel = new THREE.Mesh(geometry, fabric);
+      panel.frustumCulled = false; // the ripple moves vertices outside the rest-pose bounds
       this.banner.add(panel);
     }
-    this.banner.add(box(0.08, BANNER_HEIGHT + 0.2, 0.08, dark));
-    const hook = new THREE.Vector3(0, -1.3, -0.4);
-    const lead = new THREE.Vector3(0, -4.3, -6.6);
+    const poleTop = new THREE.Vector3(0, BANNER_HEIGHT / 2 + 0.15, 0);
+    const poleBottom = new THREE.Vector3(0, -BANNER_HEIGHT / 2 - 0.15, 0);
+    const ring = new THREE.Vector3(0, 0, 0.9);
+    const weight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), dark);
+    weight.position.copy(poleBottom);
+    this.banner.add(rope(poleBottom, poleTop, dark, 0.045), weight, rope(ring, poleTop, dark), rope(ring, poleBottom, dark));
+    // Keep the banner at its original size (1.1) so the message stays readable on the smaller helicopter.
+    const bannerScale = 1.1 / 0.825;
+    this.banner.scale.setScalar(bannerScale);
+    const lead = new THREE.Vector3(0, -4.6, -8.4);
     this.banner.position.copy(lead);
-    const towLine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, hook.distanceTo(lead), 4), dark);
-    towLine.position.copy(hook).add(lead).multiplyScalar(0.5);
-    towLine.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lead.clone().sub(hook).normalize());
-    this.group.add(this.banner, towLine);
+    const hook = new THREE.Vector3(0, -1.3, -0.4);
+    const end = ring.clone().multiplyScalar(bannerScale).add(lead);
+    const sag = hook.clone().lerp(end, 0.5).add(new THREE.Vector3(0, -0.6, 0));
+    const towRope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(hook, sag, end), 16, 0.025, 4), dark);
+    this.group.add(this.banner, towRope);
 
     this.group.rotation.order = 'YXZ';
-    this.group.scale.setScalar(1.1);
+    this.group.scale.setScalar(0.825);
     this.group.visible = false;
   }
 
@@ -173,6 +225,7 @@ export class Helicopter {
     this.banner.rotation.y = Math.sin(this.time * 2.1) * 0.05;
     this.banner.rotation.z = Math.sin(this.time * 3.3) * 0.03;
     this.beacon.emissiveIntensity = Math.sin(this.time * 6) > 0.6 ? 3 : 0;
+    if (this.group.visible) this.flutter();
 
     switch (this.phase) {
       case 'away':
@@ -206,6 +259,28 @@ export class Helicopter {
           this.phase = 'away';
           this.timer = THREE.MathUtils.lerp(VISIT_GAP[0], VISIT_GAP[1], Math.random());
         }
+    }
+  }
+
+  /**
+   * Ripples the banner like fabric in the slipstream: waves run back from the lead pole and grow
+   * toward the free tail, which also droops a little and flutters faster.
+   */
+  private flutter(): void {
+    const t = this.time;
+    for (const { geometry, rest } of this.cloth) {
+      const pos = geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const y = rest[i * 3 + 1];
+        const s = -rest[i * 3 + 2] / BANNER_LENGTH; // 0 at the lead pole, 1 at the tail
+        const v = y / (BANNER_HEIGHT / 2); // -1 bottom edge, 1 top edge
+        const swell = 0.55 * s ** 1.3 * Math.sin(14 * s - 6.5 * t);
+        const flap = 0.14 * s * s * Math.sin(32 * s - 11 * t + v * 1.2);
+        pos.setX(i, rest[i * 3] + swell + flap);
+        pos.setY(i, y - 0.3 * s * s + 0.05 * s * Math.sin(9 * s - 8 * t));
+      }
+      pos.needsUpdate = true;
+      geometry.computeVertexNormals();
     }
   }
 

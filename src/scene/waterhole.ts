@@ -24,6 +24,51 @@ function westpacLogo(): THREE.Mesh {
   );
 }
 
+/** Only a light touch of green on the water: a few small clusters of lily pads near the edge. */
+const LILY_CLUSTERS = 3;
+const HIPPO_ANGLE = 2.3;
+
+/** Notched lily pads floating in a few clusters near the bank, clear of the logo and the hippo. */
+function lilyPads(random: () => number): THREE.Group {
+  const lilies = new THREE.Group();
+  const pad = [new THREE.Color('#4a7a35'), new THREE.Color('#5a8a3e')].map(
+    (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, flatShading: true, side: THREE.DoubleSide }),
+  );
+  const petal = new THREE.MeshStandardMaterial({ color: '#fbe3ec', flatShading: true });
+  const heart = new THREE.MeshStandardMaterial({ color: '#f2c230', flatShading: true });
+  for (let c = 0; c < LILY_CLUSTERS; c++) {
+    // Spread the clusters round the pond, skipping the stretch where the hippo wallows.
+    const angle = HIPPO_ANGLE + ((c + 1) / (LILY_CLUSTERS + 1)) * Math.PI * 2 + (random() - 0.5) * 0.4;
+    const centre = polar(angle, WATER_RADIUS - 1.6 - random() * 0.8);
+    const count = 3 + Math.floor(random() * 2);
+    for (let i = 0; i < count; i++) {
+      const size = 0.3 + random() * 0.25;
+      // A circle with a wedge cut out, the classic lily-pad notch.
+      const leaf = new THREE.Mesh(new THREE.CircleGeometry(size, 10, 0.35, Math.PI * 2 - 0.7).rotateX(-Math.PI / 2), pad[i % 2]);
+      leaf.position.set(centre.x + (random() - 0.5) * 1.3, WATER_LEVEL + 0.02 + i * 0.003, centre.z + (random() - 0.5) * 1.3);
+      leaf.rotation.y = random() * Math.PI * 2;
+      leaf.receiveShadow = true;
+      lilies.add(leaf);
+    }
+    // One flower in most clusters.
+    if (c < 2) {
+      const flower = new THREE.Group();
+      for (let p = 0; p < 6; p++) {
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 4), petal);
+        tip.position.set(Math.cos((p / 6) * Math.PI * 2) * 0.07, 0.07, Math.sin((p / 6) * Math.PI * 2) * 0.07);
+        tip.rotation.set(Math.sin((p / 6) * Math.PI * 2) * 0.6, 0, -Math.cos((p / 6) * Math.PI * 2) * 0.6);
+        flower.add(tip);
+      }
+      const middle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), heart);
+      middle.position.y = 0.08;
+      flower.add(middle);
+      flower.position.set(centre.x, WATER_LEVEL + 0.03, centre.z);
+      lilies.add(flower);
+    }
+  }
+  return lilies;
+}
+
 /**
  * The watering hole stands for customer data, with the Westpac logo on its pale floor.
  * Each stolen batch muddies the water for the rest of the game until the logo disappears.
@@ -67,6 +112,8 @@ export class Waterhole {
       stalk.rotation.z = (random() - 0.5) * 0.3;
       this.group.add(stalk);
     }
+
+    this.group.add(lilyPads(random));
   }
 
   pollute(amount: number): void {

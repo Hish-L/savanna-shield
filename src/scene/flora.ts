@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FENCE_RADIUS, WATER_RADIUS, heightAt } from './terrain';
+import { nav } from './nav';
 import { seededRandom } from './util';
 
 const bark = new THREE.MeshStandardMaterial({ color: '#5b4330', flatShading: true });
@@ -123,33 +124,57 @@ function pickSpecies(roll: number): (random: () => number) => THREE.Group {
   return acacia;
 }
 
-export function createFlora(): THREE.Group {
-  const random = seededRandom(7);
-  const flora = new THREE.Group();
+const rockMaterial = new THREE.MeshStandardMaterial({ color: '#8f8578', flatShading: true });
 
-  for (let i = 0; i < 70; i++) {
+/** Scatters `count` trees in a ring between `radius` and `radius + spread`. */
+function plantTrees(flora: THREE.Group, random: () => number, count: number, radius: number, spread: number): void {
+  for (let i = 0; i < count; i++) {
     const angle = random() * Math.PI * 2;
-    const radius = 25 + random() * 100;
+    const r = radius + random() * spread;
     const tree = pickSpecies(random())(random);
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
+    const x = Math.cos(angle) * r;
+    const z = Math.sin(angle) * r;
     tree.position.set(x, heightAt(x, z) - 0.1, z);
     tree.rotation.y = random() * Math.PI * 2;
     tree.scale.setScalar(0.8 + random() * 0.5);
     flora.add(tree);
+    // Animals walk round the trunk (the widest cylinder at its base); canopies are overhead.
+    let trunk = 0;
+    tree.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.geometry instanceof THREE.CylinderGeometry) trunk = Math.max(trunk, o.geometry.parameters.radiusBottom);
+    });
+    nav.addObstacle(tree.position, trunk * tree.scale.x + 0.1);
   }
+}
 
-  const rockMaterial = new THREE.MeshStandardMaterial({ color: '#8f8578', flatShading: true });
-  for (let i = 0; i < 14; i++) {
+/** Scatters `count` boulders in a ring between `radius` and `radius + spread`. */
+function placeRocks(flora: THREE.Group, random: () => number, count: number, radius: number, spread: number, size: number): void {
+  for (let i = 0; i < count; i++) {
     const angle = random() * Math.PI * 2;
-    const radius = 21 + random() * 60;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6 + random() * 1.4, 0), rockMaterial);
-    rock.position.copy(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+    const r = radius + random() * spread;
+    const extent = 0.6 + random() * size;
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(extent, 0), rockMaterial);
+    rock.position.copy(new THREE.Vector3(Math.cos(angle) * r, 0, Math.sin(angle) * r));
     rock.position.y = heightAt(rock.position.x, rock.position.z);
     rock.scale.y = 0.6;
     rock.castShadow = rock.receiveShadow = true;
     flora.add(rock);
+    nav.addObstacle(rock.position, extent * 0.9);
   }
+}
+
+export function createFlora(): THREE.Group {
+  const random = seededRandom(7);
+  const flora = new THREE.Group();
+
+  plantTrees(flora, random, 70, 25, 100);
+  placeRocks(flora, random, 14, 21, 60, 1.4);
+
+  // Extra background scenery on its own seed so the layout above stays put. Trees start beyond
+  // the camera's orbit (38-46) so they fill the far side without blocking the view of the reserve.
+  const background = seededRandom(19);
+  plantTrees(flora, background, 70, 52, 98);
+  placeRocks(flora, background, 30, 25, 95, 2);
 
   const tufts = 1820;
   const grass = new THREE.InstancedMesh(

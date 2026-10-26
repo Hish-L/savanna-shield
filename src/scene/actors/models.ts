@@ -3,11 +3,67 @@ import { box, canvasTexture } from '../util';
 
 // All models face +z with feet at y = 0. Legs pivot at the hip so they can swing.
 
+/** Extra size for the animals (not the people), so they read well from the booth camera. */
+const ANIMAL_SIZE = 1.15;
+
 export interface Model {
   root: THREE.Group;
   /** The first half swing together and the second half in opposite phase (diagonal pairs for four legs). */
   legs: THREE.Object3D[];
   head?: THREE.Object3D;
+  /** Neck and head together, pivoting at the shoulders: tilt it forward to lower the head to the ground. */
+  neck?: THREE.Object3D;
+  /** Armed people: arms and rifle, pivoting at the shoulders. Tilt it back to raise the rifle. */
+  aim?: THREE.Object3D;
+}
+
+const SHOULDER_Y = 1.65;
+
+/** Hunting rifle with a scope, pointing along +z with the scope on top and the stock behind the origin. */
+function rifleModel(): THREE.Group {
+  const wood = new THREE.MeshStandardMaterial({ color: '#6b4a2b', flatShading: true });
+  const steel = new THREE.MeshStandardMaterial({ color: '#2b2d31', metalness: 0.6, roughness: 0.4, flatShading: true });
+  const rifle = new THREE.Group();
+  const stock = box(0.1, 0.16, 0.45, wood);
+  stock.position.z = -0.15;
+  const receiver = box(0.09, 0.12, 0.3, steel);
+  receiver.position.z = 0.22;
+  const forestock = box(0.09, 0.09, 0.4, wood);
+  forestock.position.set(0, -0.04, 0.55);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6).rotateX(Math.PI / 2), steel);
+  barrel.position.set(0, 0.02, 0.78);
+  const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 6).rotateX(Math.PI / 2), steel);
+  scope.position.set(0, 0.11, 0.24);
+  rifle.add(stock, receiver, forestock, barrel, scope);
+  return rifle;
+}
+
+/**
+ * Hunting rifle held at low ready across a person's chest, both hands on the gun. The model faces
+ * +z, so its right side is -x: stock on the right, muzzle angled left. `arm` builds an arm hanging
+ * `armLength` from its pivot to the hand; each arm is aimed from its shoulder at its grip point and
+ * stretched to reach it exactly.
+ */
+function heldRifle(arm: () => THREE.Object3D, armLength: number): THREE.Group {
+  const rifle = rifleModel();
+  rifle.position.set(-0.1, 1.3 - SHOULDER_Y, 0.28);
+  rifle.rotation.set(0.05, 0.3, 0);
+  rifle.scale.setScalar(1.3);
+  rifle.updateMatrix();
+
+  // Right hand on the grip behind the receiver, left hand under the forestock.
+  const armTo = (shoulderX: number, gripLocal: THREE.Vector3) => {
+    const mesh = arm();
+    mesh.position.set(shoulderX, 0, 0);
+    const reach = gripLocal.applyMatrix4(rifle.matrix).sub(mesh.position);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), reach.clone().normalize());
+    mesh.scale.y = reach.length() / armLength;
+    return mesh;
+  };
+  const pivot = new THREE.Group();
+  pivot.position.y = SHOULDER_Y;
+  pivot.add(armTo(-0.38, new THREE.Vector3(0, -0.08, 0.05)), armTo(0.38, new THREE.Vector3(0, -0.09, 0.48)), rifle);
+  return pivot;
 }
 
 function leg(w: number, h: number, material: THREE.Material, x: number, y: number, z: number): THREE.Mesh {
@@ -48,8 +104,11 @@ export function zebra(): Model {
   const black = new THREE.MeshStandardMaterial({ color: '#1c1c1c', flatShading: true });
   const body = box(0.7, 0.75, 1.6, coat);
   body.position.y = 1.3;
+  // Neck and head hang off a pivot at the shoulders so the zebra can stretch down to drink.
+  const shoulders = new THREE.Group();
+  shoulders.position.set(0, 1.55, 0.6);
   const neck = box(0.3, 0.9, 0.38, coat);
-  neck.position.set(0, 1.85, 0.72);
+  neck.position.set(0, 0.3, 0.12);
   neck.rotation.x = 0.45;
   const head = new THREE.Group();
   const skull = box(0.3, 0.32, 0.72, coat);
@@ -59,8 +118,9 @@ export function zebra(): Model {
   const mane = box(0.08, 0.2, 0.5, black);
   mane.position.set(0, 0.25, -0.2);
   head.add(skull, muzzle, mane);
-  head.position.set(0, 2.2, 0.95);
+  head.position.set(0, 0.65, 0.35);
   head.rotation.x = 0.35;
+  shoulders.add(neck, head);
   const tail = box(0.08, 0.7, 0.08, black);
   tail.position.set(0, 1.25, -0.85);
   tail.rotation.x = 0.3;
@@ -70,8 +130,10 @@ export function zebra(): Model {
     leg(0.16, 0.95, coat, 0.22, 0.95, 0.6),
     leg(0.16, 0.95, coat, -0.22, 0.95, -0.6),
   ];
-  root.add(body, neck, head, tail, ...legs);
-  return { root, legs, head };
+  root.add(body, shoulders, tail, ...legs);
+  root.rotation.order = 'YXZ'; // heading first, so a forward lean (x) tips it nose-down in its own frame
+  root.scale.setScalar(ANIMAL_SIZE);
+  return { root, legs, head, neck: shoulders };
 }
 
 export function hyena(): Model {
@@ -105,7 +167,7 @@ export function hyena(): Model {
     leg(0.14, 0.75, coat, -0.18, 0.75, -0.45),
   ];
   root.add(body, head, mane, ...legs);
-  root.scale.setScalar(1.1);
+  root.scale.setScalar(1.1 * ANIMAL_SIZE);
   return { root, legs, head };
 }
 
@@ -158,7 +220,7 @@ export function crocodile(): Model {
     leg(0.18, 0.32, hide, -0.55, 0.32, -0.7),
   ];
   root.add(...legs);
-  root.scale.setScalar(1.4);
+  root.scale.setScalar(1.4 * ANIMAL_SIZE);
   return { root, legs, head };
 }
 
@@ -207,6 +269,7 @@ export function elephant(): Model {
     leg(0.5, 1.75, hide, -0.55, 1.75, -0.95),
   ];
   root.add(body, head, tail, ...legs);
+  root.scale.setScalar(ANIMAL_SIZE);
   return { root, legs, head };
 }
 
@@ -218,8 +281,6 @@ export function poacher(): Model {
   const mask = new THREE.MeshStandardMaterial({ color: '#222226', flatShading: true });
   const helmet = new THREE.MeshStandardMaterial({ color: '#e4d6ad', flatShading: true });
   const band = new THREE.MeshStandardMaterial({ color: '#5a3d22', flatShading: true });
-  const wood = new THREE.MeshStandardMaterial({ color: '#6b4a2b', flatShading: true });
-  const steel = new THREE.MeshStandardMaterial({ color: '#2b2d31', metalness: 0.6, roughness: 0.4, flatShading: true });
   const eyes = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.6 });
 
   const torso = box(0.6, 0.75, 0.36, shirt);
@@ -255,42 +316,13 @@ export function poacher(): Model {
   }
   head.position.y = 1.9;
 
-  // Hunting rifle held at low ready across the chest. It's fixed to the body so it stays steady.
-  // The model faces +z, so the poacher's right side is -x: stock on the right, muzzle angled left.
-  const rifle = new THREE.Group();
-  const stock = box(0.1, 0.16, 0.45, wood);
-  stock.position.z = -0.15;
-  const receiver = box(0.09, 0.12, 0.3, steel);
-  receiver.position.z = 0.22;
-  const forestock = box(0.09, 0.09, 0.4, wood);
-  forestock.position.set(0, -0.04, 0.55);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6).rotateX(Math.PI / 2), steel);
-  barrel.position.set(0, 0.02, 0.78);
-  const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 6).rotateX(Math.PI / 2), steel);
-  scope.position.set(0, 0.11, 0.24);
-  rifle.add(stock, receiver, forestock, barrel, scope);
-  rifle.position.set(-0.1, 1.3, 0.28);
-  rifle.rotation.set(0.05, 0.3, 0);
-  rifle.scale.setScalar(1.3);
-  rifle.updateMatrix();
-
-  // Both hands on the gun: right hand on the grip behind the receiver, left hand under the forestock.
-  // Each arm is aimed from its shoulder at its hand point and stretched to reach it exactly.
-  const armTo = (shoulderX: number, gripLocal: THREE.Vector3) => {
-    const arm = leg(0.16, 0.7, shirt, shoulderX, 1.65, 0);
-    const hand = gripLocal.applyMatrix4(rifle.matrix);
-    const reach = hand.sub(arm.position);
-    arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), reach.clone().normalize());
-    arm.scale.y = reach.length() / 0.7;
-    return arm;
-  };
-  const rightArm = armTo(-0.38, new THREE.Vector3(0, -0.08, 0.05));
-  const leftArm = armTo(0.38, new THREE.Vector3(0, -0.09, 0.48));
+  // The rifle is fixed to the body so it stays steady.
+  const rifle = heldRifle(() => leg(0.16, 0.7, shirt, 0, 0, 0), 0.7);
 
   const legL = leg(0.2, 0.92, pants, 0.15, 0.92, 0);
   const legR = leg(0.2, 0.92, pants, -0.15, 0.92, 0);
 
-  root.add(torso, pack, head, legL, legR, rightArm, leftArm, rifle);
+  root.add(torso, pack, head, legL, legR, rifle);
   root.scale.setScalar(1.15);
   // Arms stay on the rifle, so only the legs swing.
   return { root, legs: [legL, legR], head };
@@ -298,14 +330,14 @@ export function poacher(): Model {
 
 /**
  * The Chief Ranger: Aussie ranger in a khaki shirt with epaulettes and a red badge, shorts, long
- * socks and boots, a shoulder radio, and an Akubra-style hat with a Westpac-red band. Only used for
- * the portrait.
+ * socks and boots, a shoulder radio, and an Akubra-style hat with a Westpac-red band. Unarmed for the
+ * portrait; with a rifle `slung` across his back, he keeps lookout on the watchtower.
  */
-export function ranger(): Model {
+export function ranger(slung = false): Model {
   const root = new THREE.Group();
   const mat = (color: string) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-  const shirt = mat('#c9b07a');
-  const seam = mat('#b09658');
+  const shirt = mat('#dcc286');
+  const seam = mat('#c0a466');
   const olive = mat('#4f5d2f');
   const shorts = mat('#8a7a4f');
   const skin = mat('#d39a6a');
@@ -340,6 +372,13 @@ export function ranger(): Model {
     flap.position.set(side * 0.15, 1.47, 0.195);
     root.add(collar, epaulette, pocket, flap);
   }
+  // Westpac-red neckerchief: a knot round the neck and a point hanging over the chest.
+  const kerchief = box(0.24, 0.08, 0.24, red);
+  kerchief.position.y = 1.7;
+  const point = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 3).rotateX(Math.PI), red);
+  point.scale.z = 0.3;
+  point.position.set(0, 1.56, 0.2);
+  root.add(kerchief, point);
   // Red badge with a gold rim on the left pocket, name tag over the right.
   const badgeRim = box(0.14, 0.16, 0.02, gold);
   badgeRim.position.set(0.15, 1.37, 0.205);
@@ -355,18 +394,22 @@ export function ranger(): Model {
   root.add(badgeRim, badge, nameTag, radio, antenna);
 
   // Arms: short sleeves, bare forearms and hands, hanging slightly away from the body.
-  const arms = [-1, 1].map((side) => {
-    const arm = new THREE.Group();
+  const arm = () => {
+    const group = new THREE.Group();
     const sleeve = box(0.18, 0.28, 0.18, shirt);
     sleeve.position.y = -0.14;
     const forearm = box(0.13, 0.36, 0.13, skin);
     forearm.position.y = -0.46;
     const hand = box(0.14, 0.12, 0.14, skin);
     hand.position.y = -0.7;
-    arm.add(sleeve, forearm, hand);
-    arm.position.set(side * 0.39, 1.65, 0);
-    arm.rotation.z = side * 0.08;
-    return arm;
+    group.add(sleeve, forearm, hand);
+    return group;
+  };
+  const arms = [-1, 1].map((side) => {
+    const hanging = arm();
+    hanging.position.set(side * 0.39, SHOULDER_Y, 0);
+    hanging.rotation.z = side * 0.08;
+    return hanging;
   });
 
   // Legs: shorts, knees, long socks and boots. Pivot at the hip like the other models.
@@ -431,6 +474,21 @@ export function ranger(): Model {
   head.position.y = 1.9;
 
   root.add(head, ...legs, ...arms);
+
+  // Slung: rifle diagonal across the back, muzzle up past the right shoulder, sling across the chest.
+  if (slung) {
+    const sling = new THREE.Group();
+    const gun = rifleModel();
+    gun.rotation.x = -Math.PI / 2; // muzzle up, scope facing out from the back
+    gun.position.set(0, -0.35, -0.27);
+    const strap = box(0.06, 0.95, 0.02, leather);
+    strap.position.set(0, 0, 0.21);
+    sling.add(gun, strap);
+    sling.position.y = 1.3;
+    sling.rotation.z = 0.55;
+    root.add(sling);
+  }
+
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) o.castShadow = true;
   });
@@ -477,6 +535,6 @@ export function hippo(): THREE.Group {
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) o.castShadow = true;
   });
-  root.scale.setScalar(1.6);
+  root.scale.setScalar(1.6 * ANIMAL_SIZE * 0.85);
   return root;
 }

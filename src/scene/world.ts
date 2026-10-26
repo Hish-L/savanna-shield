@@ -25,8 +25,10 @@ const DAY = {
 const STATION_POS = new THREE.Vector3(-5.3, 0, 12.2);
 const TOWER_POS = new THREE.Vector3(12, 0, -8.2);
 const JEEP_HOME = new THREE.Vector3(6.3, 0, 12.7);
-const CLOSE_UP_DISTANCE = 24;
-const CLOSE_UP_HEIGHT = 12;
+const PLAY_DISTANCE = 46;
+const PLAY_HEIGHT = 28;
+const CLOSE_UP_DISTANCE = 36;
+const CLOSE_UP_HEIGHT = 18;
 
 /** Owns the Three.js scene and translates round results into on-screen events. */
 export class Savanna {
@@ -70,6 +72,7 @@ export class Savanna {
     Object.assign(this.sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, near: 1, far: 220 });
     this.sun.shadow.bias = -0.0005;
 
+    // Build everything that stands on the ground before settling the herd around it.
     const station = createStation(STATION_POS);
     station.position.y = heightAt(STATION_POS.x, STATION_POS.z);
     this.scene.add(
@@ -90,12 +93,14 @@ export class Savanna {
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
+    this.herd.reset();
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
   /** Fresh reserve for a new game with the scenario's predator. */
   newGame(animal: Animal): void {
     this.scene.remove(this.pack.group);
+    this.pack.dispose();
     this.pack = createPack(animal);
     this.scene.add(this.pack.group);
     this.waterhole.reset();
@@ -199,7 +204,8 @@ export class Savanna {
       const goal = this.pack.attackAngle + Math.PI + sway;
       this.orbit += Math.atan2(Math.sin(goal - this.orbit), Math.cos(goal - this.orbit)) * (1 - Math.exp(-0.8 * dt));
     }
-    const position = polar(this.orbit, this.attract ? 46 : 38, this.attract ? 26 : 23);
+    // Resting view in play: pulled well back so the whole reserve and the approach outside it fit.
+    const position = polar(this.orbit, this.attract ? 46 : PLAY_DISTANCE, this.attract ? 26 : PLAY_HEIGHT);
     const look = this.attract ? new THREE.Vector3() : polar(this.pack.attackAngle, 4);
 
     // Reveal close-up: dolly in along the current view line toward the event, hold, then pull back.

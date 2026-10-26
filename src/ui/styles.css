@@ -8,8 +8,8 @@
   --wbc-text: #181b25;
   --ranger: var(--wbc-red);
   --on-ranger: #ffffff;
-  --predator: #a4e02b;
-  --on-predator: var(--wbc-navy-deep);
+  --predator: var(--wbc-red);
+  --on-predator: #ffffff;
   --best: #ffc72c;
   --panel: rgba(31, 28, 79, 0.92);
   --sticker: 0 0.4rem 0 var(--wbc-navy-deep), 0 0.9rem 1.8rem rgba(0, 0, 0, 0.35);
@@ -55,7 +55,7 @@ kbd {
 .screen > .brand { font-size: 1rem; }
 .title > .brand { font-size: 1.6rem; }
 .screen h1 {
-  margin: 0; font-size: 6.5rem; font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; line-height: 0.95;
+  margin: 0; font-size: min(6.5rem, 16vw); font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; line-height: 0.95;
   color: #fff; -webkit-text-stroke: 0.035em var(--wbc-navy); paint-order: stroke fill;
   text-shadow: 0 0.07em 0 var(--wbc-navy-deep), 0 0.25em 0.8em rgba(0, 0, 0, 0.45);
 }
@@ -103,17 +103,22 @@ kbd {
   font-size: 2.2rem; font-weight: 900; text-transform: uppercase; color: #fff;
   -webkit-text-stroke: 0.06em var(--wbc-navy); paint-order: stroke fill; text-shadow: 0 0.08em 0 var(--wbc-navy-deep);
 }
-.timer { height: 0.8rem; border-radius: 1rem; background: var(--wbc-navy); overflow: hidden; box-shadow: 0 0.2rem 0 var(--wbc-navy-deep); }
+.timer { height: 0.8rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 .timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
 .timer .fill.urgent { background: var(--wbc-red); }
 
 .card {
   position: absolute; top: 50%; transform: translateY(-50%); width: 26rem;
-  display: grid; gap: 0.7rem; padding: 1.2rem; border-radius: 1.4rem; background: var(--panel);
+  display: grid; gap: 0.7rem; padding: 1.2rem; border-radius: 1.4rem; background: rgba(0, 0, 0, 0.92);
   border: 0.22rem solid var(--accent); box-shadow: var(--sticker); backdrop-filter: blur(0.35rem);
   animation: pop-in 0.35s cubic-bezier(0.3, 1.5, 0.6, 1);
 }
-.card.ranger { --accent: var(--ranger); --on-accent: var(--on-ranger); left: 1.5rem; }
+/* Defenders get a white card, attackers a black one. */
+.card.ranger { --accent: var(--ranger); --on-accent: var(--on-ranger); left: 1.5rem; background: #fff; color: var(--wbc-navy-deep); }
+.card.ranger .opt { background: rgba(17, 15, 51, 0.05); border-color: rgba(17, 15, 51, 0.18); }
+.card.ranger .opt:hover { background: rgba(17, 15, 51, 0.1); }
+.card.ranger .timer { background: rgba(17, 15, 51, 0.12); }
+.card.ranger .timeout { color: var(--wbc-red); }
 .card.predator { --accent: var(--predator); --on-accent: var(--on-predator); right: 1.5rem; }
 .who { display: flex; align-items: center; gap: 0.7rem; }
 .who .avatar { width: 4.5rem; height: 4.5rem; border-width: 0.18rem; }
@@ -152,6 +157,14 @@ kbd {
 .card.revealed .opt.chosen { opacity: 1; background: var(--accent); color: var(--on-accent); }
 .card.revealed .opt.chosen kbd { background: #fff; color: var(--wbc-navy); }
 .timeout { color: var(--best); font-weight: 900; }
+/* Sits centred on the card's top border while the side is still choosing. */
+.status-chip {
+  position: absolute; top: -1.2rem; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 0.25rem 1rem; border-radius: 999px;
+  background: var(--accent); color: var(--on-accent); border: 0.18rem solid #fff; box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
+  font-size: 1.1rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.card:is(.locked, .revealed) .status-chip { display: none; }
 
 /* Reveal: cards shrink to a compact strip at the top showing just the pick and points. */
 .card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), width 0.3s, padding 0.3s; }
@@ -176,6 +189,7 @@ kbd {
   -webkit-text-stroke: 0.04em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
 }
 .banner p { margin: 0.4rem 0 0; font-size: 1rem; font-weight: 600; line-height: 1.35; }
+.banner .next { margin-top: 0.7rem; }
 .banner.blocked { --tone: #5fe3ff; }
 .banner.breach { --tone: #ff7a1a; animation: shake 0.4s; }
 .banner.fizzle { --tone: #fff; }
@@ -244,26 +258,88 @@ kbd {
   .card { top: auto; transform: none; width: 47vw; bottom: 1vh; padding: 0.8rem; animation: none; }
   .card.ranger { left: 1.5vw; }
   .card.predator { right: 1.5vw; }
+  .status-chip { top: -0.85rem; padding: 0.15rem 0.7rem; font-size: 0.8rem; border-width: 0.15rem; }
   /* Cards sit up top during the reveal, so the verdict goes underneath the map. */
   .banner { width: 90vw; bottom: max(1vh, env(safe-area-inset-bottom)); }
-  .card.revealed { top: 1vh; bottom: auto; width: 47vw; }
+  /* Reveal: both cards become full-width rows stacked at the top, so the picks read on one or two lines.
+     Avatar | name over chosen answer | total. Fixed height so the second row knows where to sit. */
+  .card.revealed {
+    top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; height: 6rem; padding: 0.55rem 0.7rem;
+    grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; align-content: center; align-items: center;
+    column-gap: 0.7rem; row-gap: 0.3rem;
+  }
+  .card.predator.revealed { top: calc(2vw + 6.5rem); }
+  .card.revealed .who { display: contents; }
+  .card.revealed .who .avatar { grid-area: 1 / 1 / 3; width: 3.4rem; height: 3.4rem; }
+  .card.revealed .who > div:not(.pts) { grid-area: 1 / 2; }
+  .card.revealed .who b { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; }
   .card.revealed .who small { display: none; }
+  .card.revealed .who .pts { grid-area: 1 / 3 / 3; margin: 0; }
+  .card.revealed :is(.opt.chosen, .timeout) { grid-area: 2 / 2; }
+  .card.revealed .opt.chosen { gap: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.95rem; }
+  .card.revealed .opt.chosen span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+  .card.revealed .opt.chosen em { font-size: 1.1rem; }
   .revealing .topbar { opacity: 0; }
 
-  /* Online on a phone: your card fills the width, the opponent shrinks to a status strip up top. */
-  :root:has(.hud.online) { font-size: max(14px, 3.6vw); }
-  .online .card:not(.ai):not(.revealed) { left: 2vw; right: 2vw; width: auto; bottom: max(2vw, env(safe-area-inset-bottom)); }
-  .online .card.ai:not(.revealed) { top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; padding: 0.5rem 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
-  .online .card.ai:not(.revealed) .who { flex: 1; }
-  .online .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
-  .online .card.ai:not(.revealed) .who small, .online .card.ai:not(.revealed) .who .pts { display: none; }
-  .online .card.ai:not(.revealed) :is(.timer, .prompt, .opt) { display: none; }
-  .online .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
-  .online .topbar { top: 6.4rem; }
-  .online .stage b { font-size: 1.6rem; }
-  .online .card.revealed { width: 47vw; }
+  /* One player on a phone (online or vs computer): your card fills the width, the opponent shrinks to a status strip up top. */
+  :root:has(.hud.one-player) { font-size: max(14px, 3.6vw); }
+  .one-player .card:not(.ai):not(.revealed) { left: 2vw; right: 2vw; width: auto; bottom: max(2vw, env(safe-area-inset-bottom)); }
+  .one-player .card.ai:not(.revealed) { top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; padding: 0.5rem 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
+  .one-player .card.ai:not(.revealed) .who { flex: 1; }
+  .one-player .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
+  .one-player .card.ai:not(.revealed) .who small, .one-player .card.ai:not(.revealed) .who .pts { display: none; }
+  .one-player .card.ai:not(.revealed) :is(.timer, .prompt, .opt, .status-chip) { display: none; }
+  .one-player .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
+  .one-player .topbar { top: 6.4rem; }
+  .one-player .stage b { font-size: 1.6rem; }
+  .hud > .brand { display: none; }
+
+  /* Two players sharing a phone: each card takes the full width, the Ranger under the round title
+     and the Predator at the bottom, with the reserve in between. */
+  :root:has(.hud.shared) { font-size: max(13px, 3.2vw); }
+  .shared .topbar { top: max(1vh, env(safe-area-inset-top)); }
+  .shared .stage b { font-size: 1.5rem; }
+  .shared .timer { height: 0.5rem; }
+  .shared .card:not(.revealed) { left: 2vw; right: 2vw; width: auto; gap: 0.45rem; padding: 0.6rem 0.8rem; }
+  .shared .card.ranger:not(.revealed) { top: calc(max(1vh, env(safe-area-inset-top)) + 4.8rem); bottom: auto; }
+  .shared .card.predator:not(.revealed) { bottom: max(1vh, env(safe-area-inset-bottom)); }
+  .shared .card:not(.revealed) .who .avatar { width: 2.8rem; height: 2.8rem; }
+  .shared .card:not(.revealed) .who b { font-size: 1.1rem; }
+  .shared .card:not(.revealed) .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
+  .shared .card:not(.revealed) .prompt { margin: 0; font-size: 1.15rem; }
+  .shared .card:not(.revealed) .opt { padding: 0.45rem 0.7rem; font-size: 1rem; }
   .screen { justify-content: safe center; overflow-y: auto; padding: 2rem 1.2rem; }
-  .online > .brand { display: none; }
   .panel { width: 100%; }
   .room-code { font-size: 4.5rem; }
 }
+
+/* ---------- Team Battle (big screen) ---------- */
+/* Answers live on the phones; the big screen only shows them on the reveal. */
+.hud.teams .card:not(.revealed) .opt { display: none; }
+/* With no answer buttons, the status stamp sits under the prompt instead of over it. */
+.hud.teams .card .lock { position: static; }
+.away-badge { justify-self: start; padding: 0.2rem 0.7rem; border-radius: 999px; background: var(--wbc-red); color: #fff; font-weight: 800; font-size: 0.85rem; animation: pulse 1.6s infinite; }
+.banner .votes { display: flex; justify-content: center; gap: 1rem; margin: 0.6rem 0 0; font-weight: 800; }
+.banner .votes span { padding: 0.2rem 0.8rem; border-radius: 999px; border: 0.15rem solid var(--accent); opacity: 0.7; }
+.banner .votes .ranger { --accent: var(--ranger); }
+.banner .votes .predator { --accent: var(--predator); }
+.banner .votes .ready { opacity: 1; background: var(--accent); color: var(--wbc-navy-deep); }
+.banner .votes .ranger.ready { color: #fff; }
+.team-lobby .join-row { display: flex; gap: 2rem; align-items: center; }
+.team-lobby .qr { width: 17rem; padding: 0.8rem; border-radius: 1.2rem; background: #fff; box-shadow: var(--sticker); }
+.team-lobby .qr svg { display: block; width: 100%; height: auto; }
+.team-lobby .slots { display: grid; gap: 1rem; }
+.slot {
+  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 0.8rem; width: 20rem; padding: 0.8rem 1rem;
+  border-radius: 1.2rem; background: var(--panel); border: 0.22rem dashed var(--accent); box-shadow: var(--sticker); text-align: left;
+}
+.slot.ranger { --accent: var(--ranger); }
+.slot.predator { --accent: var(--predator); }
+.slot .avatar { grid-row: span 2; width: 3rem; height: 3rem; }
+.slot b { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; }
+.slot small { font-weight: 700; opacity: 0.8; }
+.slot.open { opacity: 0.6; }
+.slot.joined { border-style: solid; }
+.slot.joined small { opacity: 1; color: var(--accent); }
+.slot.away small { color: var(--best); animation: pulse 1.6s infinite; }
+.team-lobby .url { margin: 0; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.03em; }

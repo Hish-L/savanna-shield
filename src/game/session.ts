@@ -1,17 +1,17 @@
-import { BRIEFING_SECONDS, REVEAL_SECONDS, ROUND_SECONDS } from '../config';
+import { BRIEFING_SECONDS, ROUND_SECONDS } from '../config';
 import { Disconnected, type Link, type Msg } from '../net/link';
 import { scenarios } from '../scenarios';
 import type { Savanna } from '../scene/world';
 import { KEYS, isHuman, localSide, type Played, type Totals, type UI } from '../ui/ui';
 import { aiDelay, aiPick } from './ai';
-import { resolveRound } from './scoring';
+import { resolveRound, type RoundResult } from './scoring';
 import type { Mode, Option, Round, Scenario, Side } from './types';
 
 const SIDES: Side[] = ['ranger', 'predator'];
 const sleep = (seconds: number) => new Promise((r) => setTimeout(r, seconds * 1000));
 const other = (side: Side): Side => (side === 'ranger' ? 'predator' : 'ranger');
 
-function shuffle<T>(items: T[]): T[] {
+export function shuffle<T>(items: T[]): T[] {
   const a = [...items];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -20,7 +20,7 @@ function shuffle<T>(items: T[]): T[] {
   return a;
 }
 
-type Picks = Record<Side, Option | null>;
+export type Picks = Record<Side, Option | null>;
 
 /** Routes keyboard and tap input to `pick` for the sides played on this device. Returns a cleanup function. */
 function listenForInput(mode: Mode, ui: UI, pick: (side: Side, index: number) => void): () => void {
@@ -48,7 +48,7 @@ function listenForInput(mode: Mode, ui: UI, pick: (side: Side, index: number) =>
 }
 
 /** Animates the round timer bar until the returned function is called. */
-function runTimer(ui: UI): () => void {
+export function runTimer(ui: UI): () => void {
   const start = performance.now();
   let frame = 0;
   const tick = () => {
@@ -60,48 +60,63 @@ function runTimer(ui: UI): () => void {
 }
 
 /**
- * Resolves when both sides have locked in or the round timer runs out (missing picks are null).
- * With a `link`, the remote side's pick arrives over the network; it is never shown before the reveal.
+ * Connects the inputs for one round. Call `choose` with a side's option index as picks arrive,
+ * or `end` to finish the round early. Returns cleanups to run when the round is over.
  */
-function collectPicks(options: Record<Side, Option[]>, mode: Mode, ui: UI, round: number, link?: Link): Promise<Picks> {
+export type PickWiring = (choose: (side: Side, index: number) => void, end: () => void) => (() => void)[];
+
+/** Resolves when both sides have locked in or the round timer runs out (missing picks are null). */
+export function collectPicks(options: Record<Side, Option[]>, ui: UI, wire: PickWiring, onLock?: (side: Side, index: number) => void): Promise<Picks> {
   return new Promise((resolve) => {
     const picks: Partial<Picks> = {};
-    const timers: number[] = [];
-    const cleanups: (() => void)[] = [];
+    let cleanups: (() => void)[] = [];
+    let done = false;
     const finish = () => {
+      if (done) return;
+      done = true;
       cleanups.forEach((f) => f());
-      timers.forEach(clearTimeout);
       resolve({ ranger: picks.ranger ?? null, predator: picks.predator ?? null });
     };
-    const choose = (side: Side, option: Option | undefined) => {
-      if (!option || picks[side]) return;
+    const choose = (side: Side, index: number) => {
+      const option = options[side][index];
+      if (done || !option || picks[side]) return;
       picks[side] = option;
       ui.lock(side);
-      if (link && isHuman(mode, side)) link.send({ t: 'lock' });
+      onLock?.(side, index);
       if (picks.ranger && picks.predator) finish();
     };
-    cleanups.push(listenForInput(mode, ui, (side, index) => choose(side, options[side][index])));
+    const timer = window.setTimeout(finish, ROUND_SECONDS * 1000);
+    cleanups = [...wire(choose, finish), runTimer(ui), () => clearTimeout(timer)];
+  });
+}
 
+/**
+ * Inputs for keyboard/tap, the AI, and the 1-v-1 online opponent.
+ * With a `link`, the remote side's pick arrives over the network; it is never shown before the reveal.
+ */
+function localWiring(options: Record<Side, Option[]>, mode: Mode, ui: UI, round: number, link?: Link): PickWiring {
+  return (choose, end) => {
+    const cleanups = [listenForInput(mode, ui, choose)];
     for (const side of SIDES) {
       if (isHuman(mode, side)) continue;
       if (link) {
         cleanups.push(
           link.listen((m) => {
-            if (m.t === 'pick' && m.round === round) choose(side, options[side][m.index]);
-            if (m.t === 'bye') finish();
+            if (m.t === 'pick' && m.round === round) choose(side, m.index);
+            if (m.t === 'bye') end();
           }),
         );
       } else {
-        timers.push(window.setTimeout(() => choose(side, aiPick(options[side])), aiDelay() * 1000));
+        const timer = window.setTimeout(() => choose(side, options[side].indexOf(aiPick(options[side]))), aiDelay() * 1000);
+        cleanups.push(() => clearTimeout(timer));
       }
     }
-    timers.push(window.setTimeout(finish, ROUND_SECONDS * 1000));
-    cleanups.push(runTimer(ui));
-  });
+    return cleanups;
+  };
 }
 
 /** Shared per-round bookkeeping once both picks are known. */
-function applyResult(world: Savanna, ui: UI, round: Round, picks: Picks, totals: Totals, played: Played[]): void {
+export function applyResult(world: Savanna, ui: UI, round: Round, picks: Picks, totals: Totals, played: Played[]): RoundResult {
   const result = resolveRound(picks.ranger, picks.predator);
   totals.ranger += result.rangerPoints;
   totals.predator += result.predatorPoints;
@@ -109,9 +124,12 @@ function applyResult(world: Savanna, ui: UI, round: Round, picks: Picks, totals:
   world.react(result);
   world.setScore(totals.predator - totals.ranger);
   ui.reveal(round, result, totals);
+  return result;
 }
 
-function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void {
+export const randomScenario = () => scenarios[Math.floor(Math.random() * scenarios.length)];
+
+export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void {
   world.newGame(scenario.predator.animal);
   world.setAttract(false);
   ui.briefing(scenario, mode, BRIEFING_SECONDS);
@@ -119,7 +137,7 @@ function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void
 
 /** Runs a full game on this device. Online, this device is the host and drives the guest via `link`. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Link): Promise<void> {
-  const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+  const scenario = randomScenario();
   link?.send({ t: 'start', scenario: scenario.id });
   startGame(scenario, mode, world, ui);
   await sleep(BRIEFING_SECONDS);
@@ -131,7 +149,8 @@ export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Lin
     const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
     link?.send({ t: 'round', index, order });
     ui.round(scenario, round, index, options, mode, totals);
-    const picks = await collectPicks(options, mode, ui, index, link);
+    const onLock = link ? (side: Side) => isHuman(mode, side) && link.send({ t: 'lock' }) : undefined;
+    const picks = await collectPicks(options, ui, localWiring(options, mode, ui, index, link), onLock);
     if (link) {
       // A mid-round disconnect ends the game rather than scoring a forfeit.
       if (link.closed) throw new Disconnected();
@@ -139,7 +158,7 @@ export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Lin
       link.send({ t: 'reveal', picks: { ranger: pickIndex('ranger'), predator: pickIndex('predator') } });
     }
     applyResult(world, ui, round, picks, totals, played);
-    await sleep(REVEAL_SECONDS);
+    await ui.continueAfterReveal();
   }
 
   link?.send({ t: 'end' });
@@ -186,6 +205,7 @@ export async function playGuest(mode: Mode, world: Savanna, ui: UI, link: Link):
     });
     const pick = (side: Side) => (reveal.picks[side] === null ? null : options[side][reveal.picks[side]]);
     applyResult(world, ui, round, { ranger: pick('ranger'), predator: pick('predator') }, totals, played);
+    ui.continueAfterReveal(true);
   }
 
   world.setAttract(true);

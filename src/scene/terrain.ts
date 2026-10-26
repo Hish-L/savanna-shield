@@ -25,14 +25,23 @@ export function createTerrain(): THREE.Mesh {
   const pale = new THREE.Color('#e2c886');
   const olive = new THREE.Color('#9c9a48');
   const mud = new THREE.Color('#6e5533');
+  const grass = new THREE.Color('#4a7a35'); // deep blue-green, like St Augustine turf
+  const lush = new THREE.Color('#5a8a3e');
   const c = new THREE.Color();
+  const green = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
     pos.setY(i, heightAt(x, z));
     const patch = Math.sin(x * 0.08 + Math.cos(z * 0.06) * 2) * 0.5 + 0.5;
     c.copy(dry).lerp(pale, patch * 0.6).lerp(olive, Math.max(0, Math.sin(z * 0.05 - x * 0.04)) * 0.45);
-    c.lerp(mud, 1 - smooth(Math.hypot(x, z), WATER_RADIUS, WATER_RADIUS + 2.5));
+    // Green grazing inside the fence that thins out raggedly into the dry plain beyond it,
+    // then the muddy bank and pond bed on top of that.
+    const r = Math.hypot(x, z);
+    const angle = Math.atan2(z, x);
+    const ragged = Math.sin(angle * 3 + 1) * 1.2 + Math.sin(angle * 8 + Math.sin(r * 0.3) * 1.5) * 0.6 + (patch - 0.5) * 1.5;
+    c.lerp(green.copy(grass).lerp(lush, patch * 0.6), 1 - smooth(r + ragged * 0.5, FENCE_RADIUS + 0.25, FENCE_RADIUS + 4.5));
+    c.lerp(mud, 1 - smooth(r, WATER_RADIUS, WATER_RADIUS + 2.5));
     c.toArray(colors, i * 3);
   }
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));

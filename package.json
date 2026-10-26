@@ -1,20 +1,26 @@
 {
-  "name": "savanna-shield",
+  "name": "savannah-shield",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && tsc -p tsconfig.node.json && vite build",
     "preview": "vite preview",
+    "booth": "npm run build && node server/booth.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "peerjs": "^1.5.5",
-    "three": "^0.186.1"
+    "qrcode": "^1.5.4",
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/qrcode": "^1.5.6",
     "@types/three": "^0.186.0",
+    "@types/ws": "^8.18.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

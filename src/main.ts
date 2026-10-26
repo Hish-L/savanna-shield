@@ -1,5 +1,6 @@
 import { playOnline } from './game/online';
 import { playSession } from './game/session';
+import { playTeams } from './game/teams';
 import { normalizeCode } from './net/link';
 import { renderPortraits } from './scene/portraits';
 import { Savanna } from './scene/world';
@@ -15,6 +16,10 @@ if (invite) history.replaceState(null, '', location.pathname);
 // Booth loop: title → game → debrief → title, forever.
 for (;;) {
   const mode = invite ? 'online' : await ui.title();
+  if (mode === 'teams') {
+    await playTeams(world, ui);
+    continue;
+  }
   if (mode !== 'online') {
     await playSession(mode, world, ui);
     continue;
