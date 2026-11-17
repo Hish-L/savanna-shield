@@ -1,7 +1,7 @@
 import type { Option } from './types';
 
-// The computer opponent is beatable: best answer half the time, otherwise a weaker one.
-const RANK_WEIGHTS = [0.5, 0.3, 0.2];
+// The computer opponent is beatable: best answer 40% of the time, otherwise a weaker one.
+const RANK_WEIGHTS = [0.4, 0.3, 0.2, 0.1];
 
 export function aiPick(options: Option[], random = Math.random): Option {
   const ranked = [...options].sort((a, b) => b.score - a.score);

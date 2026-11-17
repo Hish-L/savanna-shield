@@ -8,12 +8,8 @@ export type Effect = 'steal' | 'burn';
 
 export interface Option {
   text: string;
-  /** 0–10. The highest-scoring option is the "best" answer shown in the field note. */
+  /** 1–4, from the answer key. The highest-scoring option is the "best" answer. */
   score: number;
-  /** Predator options: the attacker technique this option uses. */
-  tag?: string;
-  /** Ranger options: Predator tags this defence blocks. */
-  mitigates?: string[];
   effect?: Effect;
 }
 
@@ -23,11 +19,16 @@ export interface Question {
 }
 
 export interface Round {
+  /** Topic tag shown above the situation, e.g. "Secure by Design". */
   stage: string;
+  /** Headline of the situation both sides face this round. */
+  situation: string;
+  /** One or two sentences of context under the headline. */
+  detail: string;
   ranger: Question;
   predator: Question;
-  /** One-line lesson shown on reveal and in the debrief. */
-  note: string;
+  /** Optional lesson shown on reveal and in the debrief. */
+  note?: string;
 }
 
 export interface Scenario {

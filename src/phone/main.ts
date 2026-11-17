@@ -1,4 +1,5 @@
 import { ROUND_SECONDS } from '../config';
+import type { LessonLine } from '../game/lesson';
 import type { Side } from '../game/types';
 import type { PhoneMsg, PhoneView } from '../net/teams-protocol';
 import './phone.css';
@@ -136,8 +137,10 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   const locked = q.locked !== null;
   draw(
     q.side,
-    `<p class="stage">Round ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
+    `<p class="stage">Question ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
+     <p class="situation"><b>${esc(q.situation)}</b> ${esc(q.detail)}</p>
      <div class="timer"><div class="fill"></div></div>
+     <p class="read-hint" hidden></p>
      <h2 class="prompt">${esc(q.prompt)}</h2>
      <div class="options ${locked ? 'locked' : ''}">
        ${q.options
@@ -160,12 +163,17 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   );
 
   const fill = app.querySelector<HTMLElement>('.timer .fill')!;
+  const hint = app.querySelector<HTMLElement>('.read-hint')!;
   const end = performance.now() + q.endsInMs;
   const tick = () => {
     const left = Math.max(0, end - performance.now());
-    const fraction = left / ROUND_MS;
+    // Time beyond the answer window is reading time: the bar stays full with a countdown to the start.
+    const fraction = Math.min(1, left / ROUND_MS);
     fill.style.transform = `scaleX(${fraction})`;
     fill.classList.toggle('urgent', fraction < 0.35);
+    const reading = left > ROUND_MS;
+    hint.hidden = !reading;
+    if (reading) hint.textContent = `Timer starts in ${Math.ceil((left - ROUND_MS) / 1000)}s`;
     if (left > 0) frame = requestAnimationFrame(tick);
     else if (!app.querySelector('.options.locked')) {
       buttons.forEach((x) => (x.disabled = true));
@@ -174,6 +182,8 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   };
   tick();
 }
+
+const line = (l: LessonLine | null) => (l ? `<p>${esc(l.lead)}${l.action ? ` <strong>${esc(l.action)}</strong>` : ''}</p>` : '');
 
 function result(r: Extract<PhoneView, { v: 'result' }>): void {
   const headline = { blocked: '🛡️ Blocked!', breach: '⚠️ Breach!', fizzle: 'Attack fizzled' }[r.outcome];
@@ -186,9 +196,9 @@ function result(r: Extract<PhoneView, { v: 'result' }>): void {
        <b>${r.yourPick ? esc(r.yourPick) : '⏱ Too slow'}</b>
        <em>+${r.points}</em>
      </div>
-     ${wasBest ? '<p class="best-tag">★ Best answer!</p>' : `<div class="pick best"><small>Best answer</small><b>${esc(r.best)}</b></div>`}
+     ${wasBest ? '<p class="best-tag">★ Best answer!</p>' : r.side === 'ranger' ? '' : `<div class="pick best"><small>Best answer</small><b>${esc(r.best)}</b></div>`}
      ${scoreline(r.totals)}
-     <p class="message small">The field note is on the big screen.</p>
+     <div class="lesson">${line(r.lesson.why)}${line(r.lesson.tip)}</div>
      ${voteButton(r.youTappedNext, r.otherTappedNext, 'Next round')}`,
   );
   app.querySelector<HTMLButtonElement>('button.vote')?.addEventListener('click', (e) => {

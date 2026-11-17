@@ -1,3 +1,4 @@
+import type { LessonLine } from '../game/lesson';
 import type { Side } from '../game/types';
 
 // Team Battle messages between the big screen and the phones (relayed by server/hub.ts).
@@ -26,9 +27,11 @@ export type PhoneView =
       round: number;
       total: number;
       stage: string;
+      situation: string;
+      detail: string;
       prompt: string;
       options: string[];
-      /** Remaining time rather than a timestamp, so phone clocks don't matter. */
+      /** Remaining time rather than a timestamp, so phone clocks don't matter. Anything over the answer time is reading time. */
       endsInMs: number;
       locked: number | null;
     }
@@ -41,6 +44,8 @@ export type PhoneView =
       points: number;
       totals: Record<Side, number>;
       outcome: Outcome;
+      /** What the defenders did and should have done (see game/lesson.ts). */
+      lesson: { why: LessonLine; tip: LessonLine };
       youTappedNext: boolean;
       otherTappedNext: boolean;
     }

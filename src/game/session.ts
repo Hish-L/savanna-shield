@@ -1,9 +1,10 @@
 import { BRIEFING_SECONDS, ROUND_SECONDS } from '../config';
 import { Disconnected, type Link, type Msg } from '../net/link';
-import { scenarios } from '../scenarios';
+import { buildScenario, dealQuestions } from '../scenarios';
 import type { Savanna } from '../scene/world';
 import { KEYS, isHuman, localSide, type Played, type Totals, type UI } from '../ui/ui';
 import { aiDelay, aiPick } from './ai';
+import { readingSeconds } from './reading';
 import { resolveRound, type RoundResult } from './scoring';
 import type { Mode, Option, Round, Scenario, Side } from './types';
 
@@ -34,8 +35,8 @@ function listenForInput(mode: Mode, ui: UI, pick: (side: Side, index: number) =>
       const index = KEYS[side].indexOf(key);
       if (index >= 0) humanPick(side, index);
     }
-    // Single players can also use 1/2/3.
-    const n = ['1', '2', '3'].indexOf(key);
+    // Single players can also use the number keys.
+    const n = ['1', '2', '3', '4'].indexOf(key);
     const side = localSide(mode);
     if (n >= 0 && side) humanPick(side, n);
   };
@@ -47,12 +48,13 @@ function listenForInput(mode: Mode, ui: UI, pick: (side: Side, index: number) =>
   };
 }
 
-/** Animates the round timer bar until the returned function is called. */
-export function runTimer(ui: UI): () => void {
+/** Animates the round timer bar until the returned function is called. It stays full for `readSeconds`, then drains. */
+export function runTimer(ui: UI, readSeconds: number): () => void {
   const start = performance.now();
   let frame = 0;
   const tick = () => {
-    ui.timer(1 - (performance.now() - start) / (ROUND_SECONDS * 1000));
+    const elapsed = (performance.now() - start) / 1000;
+    ui.timer(Math.min(1, 1 - (elapsed - readSeconds) / ROUND_SECONDS), Math.max(0, readSeconds - elapsed));
     frame = requestAnimationFrame(tick);
   };
   tick();
@@ -65,8 +67,17 @@ export function runTimer(ui: UI): () => void {
  */
 export type PickWiring = (choose: (side: Side, index: number) => void, end: () => void) => (() => void)[];
 
-/** Resolves when both sides have locked in or the round timer runs out (missing picks are null). */
-export function collectPicks(options: Record<Side, Option[]>, ui: UI, wire: PickWiring, onLock?: (side: Side, index: number) => void): Promise<Picks> {
+/**
+ * Resolves when both sides have locked in or the round timer runs out (missing picks are null).
+ * Picks are accepted during the `readSeconds` reading time too; the answer timer starts after it.
+ */
+export function collectPicks(
+  options: Record<Side, Option[]>,
+  readSeconds: number,
+  ui: UI,
+  wire: PickWiring,
+  onLock?: (side: Side, index: number) => void,
+): Promise<Picks> {
   return new Promise((resolve) => {
     const picks: Partial<Picks> = {};
     let cleanups: (() => void)[] = [];
@@ -85,8 +96,8 @@ export function collectPicks(options: Record<Side, Option[]>, ui: UI, wire: Pick
       onLock?.(side, index);
       if (picks.ranger && picks.predator) finish();
     };
-    const timer = window.setTimeout(finish, ROUND_SECONDS * 1000);
-    cleanups = [...wire(choose, finish), runTimer(ui), () => clearTimeout(timer)];
+    const timer = window.setTimeout(finish, (readSeconds + ROUND_SECONDS) * 1000);
+    cleanups = [...wire(choose, finish), runTimer(ui, readSeconds), () => clearTimeout(timer)];
   });
 }
 
@@ -127,7 +138,11 @@ export function applyResult(world: Savanna, ui: UI, round: Round, picks: Picks, 
   return result;
 }
 
-export const randomScenario = () => scenarios[Math.floor(Math.random() * scenarios.length)];
+/** Deals a fresh hand of questions. `questions` is what an online guest needs to rebuild the same game. */
+export function dealScenario(): { scenario: Scenario; questions: number[] } {
+  const questions = dealQuestions();
+  return { scenario: buildScenario(questions)!, questions };
+}
 
 export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void {
   world.newGame(scenario.predator.animal);
@@ -137,8 +152,8 @@ export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI
 
 /** Runs a full game on this device. Online, this device is the host and drives the guest via `link`. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Link): Promise<void> {
-  const scenario = randomScenario();
-  link?.send({ t: 'start', scenario: scenario.id });
+  const { scenario, questions } = dealScenario();
+  link?.send({ t: 'start', questions });
   startGame(scenario, mode, world, ui);
   await sleep(BRIEFING_SECONDS);
 
@@ -150,7 +165,7 @@ export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Lin
     link?.send({ t: 'round', index, order });
     ui.round(scenario, round, index, options, mode, totals);
     const onLock = link ? (side: Side) => isHuman(mode, side) && link.send({ t: 'lock' }) : undefined;
-    const picks = await collectPicks(options, ui, localWiring(options, mode, ui, index, link), onLock);
+    const picks = await collectPicks(options, readingSeconds(round), ui, localWiring(options, mode, ui, index, link), onLock);
     if (link) {
       // A mid-round disconnect ends the game rather than scoring a forfeit.
       if (link.closed) throw new Disconnected();
@@ -169,7 +184,7 @@ export async function playSession(mode: Mode, world: Savanna, ui: UI, link?: Lin
 /** Online guest: mirrors the host's game, sending only this device's picks. */
 export async function playGuest(mode: Mode, world: Savanna, ui: UI, link: Link): Promise<void> {
   const start = await link.next('start');
-  const scenario = scenarios.find((s) => s.id === start.scenario);
+  const scenario = buildScenario(start.questions);
   if (!scenario) throw new Error('Your opponent is running a different version of the game. Both refresh and try again.');
   startGame(scenario, mode, world, ui);
 
@@ -190,7 +205,7 @@ export async function playGuest(mode: Mode, world: Savanna, ui: UI, link: Link):
       ui.lock(side);
       link.send({ t: 'pick', round: m.index, index });
     });
-    const stopTimer = runTimer(ui);
+    const stopTimer = runTimer(ui, readingSeconds(round));
     // The host's clock is authoritative; its reveal ends the round.
     const reveal = await new Promise<Extract<Msg, { t: 'reveal' }>>((resolve, reject) => {
       const stopListening = link.listen((msg) => {

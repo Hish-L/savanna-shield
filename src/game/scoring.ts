@@ -1,23 +1,24 @@
-import { BLOCK_BONUS } from '../config';
 import type { Option, Question } from './types';
 
 export interface RoundResult {
   ranger: Option | null;
   predator: Option | null;
+  /** The defence was at least as strong as the attack. */
   blocked: boolean;
-  /** The attack landed: not blocked and a decent technique. Drives the breach visuals. */
+  /** The attack landed. Drives the breach visuals. */
   breached: boolean;
   rangerPoints: number;
   predatorPoints: number;
 }
 
-/** A missing pick means that side ran out of time and scores nothing. */
+/**
+ * A defence blocks an attack when its score is at least as high as the attack's, and a blocked
+ * attack scores nothing. A missing pick means that side ran out of time and scores nothing.
+ */
 export function resolveRound(ranger: Option | null, predator: Option | null): RoundResult {
-  const blocked = !!predator?.tag && !!ranger?.mitigates?.includes(predator.tag);
-  const predatorPoints = predator ? (blocked ? Math.floor(predator.score / 2) : predator.score) : 0;
-  const rangerPoints = ranger ? ranger.score + (blocked ? BLOCK_BONUS : 0) : 0;
-  const breached = !!predator && !blocked && predator.score >= 5;
-  return { ranger, predator, blocked, breached, rangerPoints, predatorPoints };
+  const blocked = !!ranger && !!predator && ranger.score >= predator.score;
+  const breached = !!predator && !blocked;
+  return { ranger, predator, blocked, breached, rangerPoints: ranger?.score ?? 0, predatorPoints: breached ? predator.score : 0 };
 }
 
 export function bestOption(question: Question): Option {

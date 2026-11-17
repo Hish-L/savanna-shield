@@ -93,7 +93,12 @@ kbd {
 
 /* ---------- in-game HUD ---------- */
 .hud { position: absolute; inset: 0; }
-.topbar { position: absolute; top: 1.2rem; left: 50%; transform: translateX(-50%); width: 30rem; text-align: center; }
+/* The question: a solid sticker panel so it reads clearly over the savanna. Its width leaves room for the cards either side. */
+.topbar {
+  position: absolute; top: 1.2rem; left: 50%; transform: translateX(-50%); width: min(46rem, calc(100vw - 62rem)); min-width: 30rem; text-align: center;
+  padding: 1.5rem 1.6rem 1.3rem; border-radius: 1.4rem; background: #fff; color: var(--wbc-navy-deep);
+  border: 0.3rem solid var(--wbc-red); box-shadow: var(--sticker);
+}
 .stage { display: grid; justify-items: center; gap: 0.3rem; }
 .stage small {
   padding: 0.15em 0.8em; border-radius: 999px; background: var(--wbc-navy); color: #fff;
@@ -103,12 +108,21 @@ kbd {
   font-size: 2.2rem; font-weight: 900; text-transform: uppercase; color: #fff;
   -webkit-text-stroke: 0.06em var(--wbc-navy); paint-order: stroke fill; text-shadow: 0 0.08em 0 var(--wbc-navy-deep);
 }
+/* The round headline is a full sentence (the situation), so it runs smaller and in sentence case. */
+.topbar .stage small { position: absolute; top: -1rem; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 0.95rem; padding: 0.25em 1em; border: 0.15rem solid #fff; }
+.topbar .stage b {
+  font-size: 1.85rem; line-height: 1.15; letter-spacing: -0.01em; text-transform: none; text-wrap: balance; color: var(--wbc-navy-deep);
+  -webkit-text-stroke: 0; text-shadow: none;
+}
+.topbar .detail { margin: 0.5rem 0 0; font-size: 1.6rem; font-weight: 500; line-height: 1.4; text-wrap: pretty; color: var(--wbc-text); }
 .timer { height: 0.8rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 .timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
 .timer .fill.urgent { background: var(--wbc-red); }
+.read-hint { margin: -0.3rem 0 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; }
+.read-hint[hidden], .card.revealed .read-hint { display: none; }
 
 .card {
-  position: absolute; top: 50%; transform: translateY(-50%); width: 26rem;
+  position: absolute; top: 50%; transform: translateY(-50%); width: 28rem;
   display: grid; gap: 0.7rem; padding: 1.2rem; border-radius: 1.4rem; background: rgba(0, 0, 0, 0.92);
   border: 0.22rem solid var(--accent); box-shadow: var(--sticker); backdrop-filter: blur(0.35rem);
   animation: pop-in 0.35s cubic-bezier(0.3, 1.5, 0.6, 1);
@@ -128,10 +142,11 @@ kbd {
   margin-left: auto; min-width: 3.6rem; padding: 0.1rem 0.6rem; border-radius: 0.8rem; text-align: center;
   font-size: 2rem; font-weight: 900; background: var(--accent); color: var(--on-accent); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
 }
-.prompt { margin: 0.2rem 0; font-size: 1.45rem; font-weight: 800; line-height: 1.25; }
+/* Prompts are short enough to sit on one line in the side cards. */
+.prompt { margin: 0.2rem 0; font-size: 1.45rem; font-weight: 800; line-height: 1.25; white-space: nowrap; }
 .opt {
   position: relative; display: flex; align-items: center; gap: 0.8rem; padding: 0.75rem 0.9rem; text-align: left;
-  font-size: 1.2rem; font-weight: 700; border-radius: 0.9rem;
+  font-size: 1.05rem; line-height: 1.3; font-weight: 700; border-radius: 0.9rem;
   background: rgba(255, 255, 255, 0.08); border: 0.18rem solid rgba(255, 255, 255, 0.2);
   transition: background 0.15s, opacity 0.2s, transform 0.1s;
 }
@@ -149,10 +164,14 @@ kbd {
 .card.locked .lock, .card.waiting .lock { opacity: 1; transform: rotate(-2deg); }
 .card.ai.waiting .opt span { filter: blur(0.3rem); }
 .card.revealed .opt { pointer-events: none; opacity: 0.45; }
-.card.revealed .opt.best { opacity: 1; border-color: var(--best); }
+.card.revealed .opt.best { opacity: 1; border: 0.22rem solid var(--best); box-shadow: 0 0 0 0.2rem rgba(255, 199, 44, 0.35), 0 0 1.2rem rgba(255, 199, 44, 0.55); }
 .card.revealed .opt.best::after {
-  content: '★ BEST'; position: absolute; top: -0.75rem; right: 0.6rem; padding: 0.05rem 0.5rem; border-radius: 0.4rem;
-  background: var(--best); color: var(--wbc-navy-deep); font-size: 0.75rem; font-weight: 900; box-shadow: 0 0.15rem 0 var(--wbc-navy-deep);
+  content: '★ BEST'; position: absolute; top: -1rem; right: 0.5rem; padding: 0.4rem 0.75rem; border-radius: 999px;
+  /* Trim the font's ascender/descender space so the caps sit dead centre in the pill. */
+  line-height: 1; text-box: trim-both cap alphabetic;
+  background: var(--best); color: var(--wbc-navy-deep); border: 0.15rem solid #fff;
+  font-size: 0.95rem; font-weight: 900; letter-spacing: 0.08em; box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
+  animation: best-pop 0.5s 0.3s cubic-bezier(0.3, 1.8, 0.6, 1) backwards, best-glow 1.6s 0.8s ease-in-out infinite;
 }
 .card.revealed .opt.chosen { opacity: 1; background: var(--accent); color: var(--on-accent); }
 .card.revealed .opt.chosen kbd { background: #fff; color: var(--wbc-navy); }
@@ -173,13 +192,17 @@ kbd {
 .card.revealed .who b { font-size: 1.05rem; }
 .card.revealed .who small { font-size: 0.8rem; }
 .card.revealed .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
-.card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen) { display: none; }
-.card.revealed .opt.chosen { padding: 0.45rem 0.7rem; font-size: 1rem; }
+.card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen, .best) { display: none; }
+.card.revealed .opt:is(.chosen, .best) { padding: 0.45rem 0.7rem; font-size: 1rem; }
+/* The pick comes first, then the best answer under it when they differ. */
+.card.revealed .opt.best:not(.chosen) { order: 1; margin-top: 0.8rem; }
+/* The chip hangs ~0.8rem into the answer, so push the text down below it. */
+.card.revealed .opt.best { padding-top: 1.15rem; }
 .hud > .brand { transition: opacity 0.2s; }
 .revealing > .brand { opacity: 0; }
 
 .banner {
-  position: absolute; left: 50%; bottom: 1.5rem; width: 31rem; transform: translate(-50%, 1rem) scale(0.9); opacity: 0;
+  position: absolute; left: 50%; bottom: 1.5rem; width: min(48rem, 94vw); transform: translate(-50%, 1rem) scale(0.9); opacity: 0;
   padding: 1rem 1.3rem; border-radius: 1.2rem; text-align: center; background: var(--panel); border: 0.22rem solid var(--tone, #fff);
   box-shadow: var(--sticker); transition: opacity 0.2s, transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1);
 }
@@ -188,7 +211,11 @@ kbd {
   display: block; font-size: 2.6rem; font-weight: 900; text-transform: uppercase; color: var(--tone);
   -webkit-text-stroke: 0.04em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
 }
-.banner p { margin: 0.4rem 0 0; font-size: 1rem; font-weight: 600; line-height: 1.35; }
+.banner p { margin: 0.4rem 0 0; font-size: 1.4rem; font-weight: 700; line-height: 1.35; }
+/* The lesson: what the defenders did and why, then the best course of action highlighted. */
+.banner .tip { margin-top: 0.7rem; padding: 0.6rem 0.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.1); color: var(--best); font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+/* The action itself reads as plain text on its own line, so long answers stay easy to read. */
+.banner .tip strong { display: block; margin-top: 0.2rem; color: #fff; font-size: 1.4rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .banner .next { margin-top: 0.7rem; }
 .banner.blocked { --tone: #5fe3ff; }
 .banner.breach { --tone: #ff7a1a; animation: shake 0.4s; }
@@ -242,19 +269,22 @@ kbd {
 .lessons { display: grid; gap: 0.7rem; max-width: 52rem; margin: 0; padding: 0; list-style: none; text-align: left; }
 .lessons li { display: grid; gap: 0.2rem; padding: 0.8rem 1rem; border-left: 0.35rem solid var(--wbc-red); border-radius: 0.8rem; background: var(--panel); box-shadow: 0 0.25rem 0 var(--wbc-navy-deep); }
 .lessons b { color: var(--best); }
+.lessons small { opacity: 0.8; font-weight: 600; }
 .again { margin: 0.5rem 0 0; font-weight: 700; animation: pulse 1.6s infinite; }
 
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-50%) scale(0.85); } }
 @keyframes shrink { to { transform: scaleX(0); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
+@keyframes best-pop { from { opacity: 0; transform: scale(0.3) rotate(-12deg); } }
+@keyframes best-glow { 50% { transform: scale(1.08); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep), 0 0 1rem var(--best); } }
 @keyframes shake-x { 25% { transform: translateX(-0.4rem); } 75% { transform: translateX(0.4rem); } }
 @keyframes shake { 25% { transform: translate(-52%, 0); } 75% { transform: translate(-48%, 0); } }
 
 /* Portrait / small screens: stack the cards. */
 @media (max-aspect-ratio: 1/1) {
   :root { font-size: max(12px, 2.2vw); }
-  .topbar { width: 90vw; top: 8vh; }
+  .topbar { width: 92vw; min-width: 0; top: 8vh; padding: 1rem 1rem 0.8rem; }
   .card { top: auto; transform: none; width: 47vw; bottom: 1vh; padding: 0.8rem; animation: none; }
   .card.ranger { left: 1.5vw; }
   .card.predator { right: 1.5vw; }
@@ -276,9 +306,14 @@ kbd {
   .card.revealed .who small { display: none; }
   .card.revealed .who .pts { grid-area: 1 / 3 / 3; margin: 0; }
   .card.revealed :is(.opt.chosen, .timeout) { grid-area: 2 / 2; }
-  .card.revealed .opt.chosen { gap: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.95rem; }
-  .card.revealed .opt.chosen span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+  .card.revealed .opt.best:not(.chosen) { grid-area: 3 / 2; margin-top: 0.7rem; }
+  .card.revealed .opt:is(.chosen, .best) { gap: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.95rem; }
+  .card.revealed .opt:is(.chosen, .best) span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
   .card.revealed .opt.chosen em { font-size: 1.1rem; }
+  .card.revealed .opt.best { padding-top: 1rem; }
+  /* Room for the best answer row under the pick. */
+  .show-best .card.revealed { height: 10.8rem; grid-template-rows: auto auto auto; }
+  .show-best .card.predator.revealed { top: calc(2vw + 11.6rem); }
   .revealing .topbar { opacity: 0; }
 
   /* One player on a phone (online or vs computer): your card fills the width, the opponent shrinks to a status strip up top. */
@@ -288,25 +323,32 @@ kbd {
   .one-player .card.ai:not(.revealed) .who { flex: 1; }
   .one-player .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
   .one-player .card.ai:not(.revealed) .who small, .one-player .card.ai:not(.revealed) .who .pts { display: none; }
-  .one-player .card.ai:not(.revealed) :is(.timer, .prompt, .opt, .status-chip) { display: none; }
+  .one-player .card.ai:not(.revealed) :is(.timer, .read-hint, .prompt, .opt, .status-chip) { display: none; }
   .one-player .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
   .one-player .topbar { top: 6.4rem; }
-  .one-player .stage b { font-size: 1.6rem; }
+  .one-player .topbar .stage b { font-size: 1.05rem; }
+  .one-player .topbar .detail { font-size: 1rem; }
+  .one-player .topbar .stage small { font-size: 0.7rem; top: -0.8rem; }
+  .banner p { font-size: 0.95rem; }
   .hud > .brand { display: none; }
 
   /* Two players sharing a phone: each card takes the full width, the Ranger under the round title
      and the Predator at the bottom, with the reserve in between. */
   :root:has(.hud.shared) { font-size: max(13px, 3.2vw); }
   .shared .topbar { top: max(1vh, env(safe-area-inset-top)); }
-  .shared .stage b { font-size: 1.5rem; }
+  .shared .topbar .stage b { font-size: 1.05rem; }
+  .shared .topbar .detail { display: none; }
+  .shared .topbar { padding: 0.9rem 0.8rem 0.5rem; }
+  .shared .topbar .stage small { font-size: 0.65rem; top: -0.75rem; }
   .shared .timer { height: 0.5rem; }
   .shared .card:not(.revealed) { left: 2vw; right: 2vw; width: auto; gap: 0.45rem; padding: 0.6rem 0.8rem; }
-  .shared .card.ranger:not(.revealed) { top: calc(max(1vh, env(safe-area-inset-top)) + 4.8rem); bottom: auto; }
+  .shared .card.ranger:not(.revealed) { top: calc(max(1vh, env(safe-area-inset-top)) + 6.2rem); bottom: auto; }
   .shared .card.predator:not(.revealed) { bottom: max(1vh, env(safe-area-inset-bottom)); }
   .shared .card:not(.revealed) .who .avatar { width: 2.8rem; height: 2.8rem; }
   .shared .card:not(.revealed) .who b { font-size: 1.1rem; }
   .shared .card:not(.revealed) .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
   .shared .card:not(.revealed) .prompt { margin: 0; font-size: 1.15rem; }
+  .prompt { white-space: normal; }
   .shared .card:not(.revealed) .opt { padding: 0.45rem 0.7rem; font-size: 1rem; }
   .screen { justify-content: safe center; overflow-y: auto; padding: 2rem 1.2rem; }
   .panel { width: 100%; }

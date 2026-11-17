@@ -1,33 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { scenarios } from './index';
+import { QUESTIONS_PER_GAME, buildScenario, dealQuestions, questionPool } from './index';
 
-// Booth rules: players get a few seconds per round, so text must stay short and every
-// question needs one clear best answer to teach.
-const MAX_PROMPT = 36;
-const MAX_OPTION = 34;
+// Booth rules: players get a few seconds per question, so text must stay readable at a glance
+// and every question needs one clear best answer per side.
+const MAX_SITUATION = 50;
+const MAX_DETAIL = 150;
+const MAX_OPTION = 80;
 
-describe.each(scenarios.map((s) => [s.id, s] as const))('scenario %s', (_id, scenario) => {
-  it('has 10 rounds', () => {
-    expect(scenario.rounds).toHaveLength(10);
+describe('question pool', () => {
+  it('has 10 questions with unique situations', () => {
+    expect(questionPool).toHaveLength(10);
+    expect(new Set(questionPool.map((r) => r.situation)).size).toBe(questionPool.length);
   });
 
-  it.each(scenario.rounds.map((r, i) => [i + 1, r] as const))('round %i is well-formed', (_n, round) => {
-    const predatorTags = round.predator.options.map((o) => o.tag);
+  it.each(questionPool.map((r, i) => [i + 1, r] as const))('question %i is well-formed', (_n, round) => {
+    expect(round.situation.length, round.situation).toBeLessThanOrEqual(MAX_SITUATION);
+    expect(round.detail.length, round.detail).toBeLessThanOrEqual(MAX_DETAIL);
     for (const question of [round.ranger, round.predator]) {
-      expect(question.options).toHaveLength(3);
-      expect(question.prompt.length).toBeLessThanOrEqual(MAX_PROMPT);
-      const scores = question.options.map((o) => o.score);
-      expect(scores.filter((s) => s === Math.max(...scores))).toHaveLength(1);
+      // Answer key scoring: one option each at 4, 3 and 2 (the ±1 options are left out).
+      expect(question.options.map((o) => o.score).sort()).toEqual([2, 3, 4]);
       for (const option of question.options) {
         expect(option.text.length, option.text).toBeLessThanOrEqual(MAX_OPTION);
       }
     }
-    for (const option of round.predator.options) {
-      expect(option.tag, option.text).toBeTruthy();
+  });
+});
+
+describe('dealing', () => {
+  it(`deals ${QUESTIONS_PER_GAME} distinct questions`, () => {
+    for (let i = 0; i < 50; i++) {
+      const hand = dealQuestions();
+      expect(hand).toHaveLength(QUESTIONS_PER_GAME);
+      expect(new Set(hand).size).toBe(QUESTIONS_PER_GAME);
+      expect(buildScenario(hand)?.rounds).toHaveLength(QUESTIONS_PER_GAME);
     }
-    // A typo in a mitigates list would silently make a defence useless.
-    for (const option of round.ranger.options) {
-      for (const tag of option.mitigates ?? []) expect(predatorTags, option.text).toContain(tag);
-    }
+  });
+
+  it('rejects indices outside the pool', () => {
+    expect(buildScenario([0, 999])).toBeNull();
+    expect(buildScenario([])).toBeNull();
   });
 });

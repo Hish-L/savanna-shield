@@ -20,7 +20,9 @@ function westpacLogo(): THREE.Mesh {
     new THREE.PlaneGeometry(LOGO_WIDTH, LOGO_WIDTH).rotateX(-Math.PI / 2),
     // Drawn after the water (see renderOrder below) so Westpac red stays red instead of mixing with
     // the blue into magenta. Its opacity carries the "seen through water" look and fades with pollution.
-    new THREE.MeshStandardMaterial({ map: texture, emissiveMap: texture, emissive: '#ffffff', emissiveIntensity: 0.3, alphaTest: 0.5, transparent: true, roughness: 0.6 }),
+    // alphaTest runs on texture alpha × opacity, so it must stay near zero: at 0.5 the whole logo was
+    // discarded as soon as one steal pushed the opacity below 0.5, instead of fading with the mud.
+    new THREE.MeshStandardMaterial({ map: texture, emissiveMap: texture, emissive: '#ffffff', emissiveIntensity: 0.3, alphaTest: 0.01, transparent: true, roughness: 0.6 }),
   );
 }
 

@@ -1,5 +1,7 @@
 import { LOGO_SVG } from '../brand';
 import { DEFENDER_TITLE, ROUND_SECONDS } from '../config';
+import { QUESTIONS_PER_GAME } from '../scenarios';
+import { lessonFor, type LessonLine } from '../game/lesson';
 import { bestOption, type RoundResult } from '../game/scoring';
 import type { Mode, Option, Round, Scenario, Side } from '../game/types';
 import { CODE_LENGTH, normalizeCode } from '../net/link';
@@ -11,6 +13,10 @@ export const KEYS: Record<Side, string[]> = { ranger: ['A', 'S', 'D'], predator:
 const BRAND = `<span class="brand"><i>${LOGO_SVG}</i><b>ISG | Security Controls Assessment</b></span>`;
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&${{ '&': 'amp', '<': 'lt', '>': 'gt', '"': 'quot' }[c]};`);
+
+/** One lesson line: the lead-in, then the action it names in emphasis. */
+const lessonHtml = (line: LessonLine, cls: string) =>
+  `<p class="${cls}">${esc(line.lead)}${line.action ? ` <strong>${esc(line.action)}</strong>` : ''}</p>`;
 
 export interface Totals {
   ranger: number;
@@ -65,7 +71,7 @@ export class UI {
       <div class="screen title">
         ${BRAND}
         <h1>Savannah <span>Shield</span></h1>
-        <p class="tagline">Defend the watering hole, or raid it. 10 rounds, ${ROUND_SECONDS} seconds each.</p>
+        <p class="tagline">Defend the watering hole, or raid it. ${QUESTIONS_PER_GAME} security calls, ${ROUND_SECONDS} seconds to answer each.</p>
         <div class="modes">
           ${modes.map((m) => `<button class="mode" data-mode="${m.mode}"><kbd>${m.key}</kbd><b>${m.label}</b><small>${m.sub}</small></button>`).join('')}
         </div>
@@ -112,6 +118,7 @@ export class UI {
         <div class="status-chip">${side === 'ranger' ? 'Defending' : 'Attacking'}\u2026</div>
         <div class="who">${this.avatar(who)}<div><b>${esc(name)}</b><small>${esc(sub)}</small></div><div class="pts">${totals[side]}</div></div>
         <div class="timer"><div class="fill"></div></div>
+        <p class="read-hint" hidden></p>
         <p class="prompt">${esc(round[side].prompt)}</p>
         ${options[side]
           .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : mode === 'teams' ? 'ABC'[i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
@@ -122,7 +129,7 @@ export class UI {
       <div class="hud ${isOnline(mode) ? 'online' : ''} ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
-          <div class="stage"><small>Round ${index + 1} / ${scenario.rounds.length}</small><b>${esc(round.stage)}</b></div>
+          <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
         </header>
         ${card('ranger', 'ranger', 'Chief Ranger', DEFENDER_TITLE)}
         ${card('predator', p.animal, p.name, p.role)}
@@ -132,10 +139,16 @@ export class UI {
     this.root.querySelectorAll('.card.ai').forEach((c) => c.classList.add('waiting'));
   }
 
-  timer(fraction: number): void {
+  /** `readingLeft` > 0 means the answer timer hasn't started yet: the bar stays full and shows a countdown. */
+  timer(fraction: number, readingLeft = 0): void {
     this.root.querySelectorAll<HTMLElement>('.card .timer .fill').forEach((fill) => {
       fill.style.transform = `scaleX(${Math.max(0, fraction)})`;
       fill.classList.toggle('urgent', fraction < 0.35);
+    });
+    const text = readingLeft > 0 ? `Timer starts in ${Math.ceil(readingLeft)}s` : '';
+    this.root.querySelectorAll<HTMLElement>('.card .read-hint').forEach((hint) => {
+      if (hint.textContent !== text) hint.textContent = text;
+      hint.hidden = !text;
     });
   }
 
@@ -149,7 +162,10 @@ export class UI {
 
   reveal(round: Round, result: RoundResult, totals: Totals): void {
     // Cards tuck up to the top so the map reveal is unobstructed.
-    this.root.querySelector('.hud')?.classList.add('revealing');
+    const hud = this.root.querySelector('.hud');
+    hud?.classList.add('revealing');
+    // Either side missed the best answer, so its card shows a second line (narrow screens need the room).
+    hud?.classList.toggle('show-best', (['ranger', 'predator'] as const).some((s) => result[s] !== bestOption(round[s])));
     for (const side of ['ranger', 'predator'] as const) {
       const card = this.root.querySelector(`.card.${side}`)!;
       card.classList.remove('locked', 'waiting');
@@ -172,7 +188,8 @@ export class UI {
         : ['fizzle', result.predator ? 'Attack fizzled' : 'Predator froze'];
     const banner = this.root.querySelector('.banner')!;
     banner.className = `banner show ${kind}`;
-    banner.innerHTML = `<b>${label}</b><p>${esc(round.note)}</p>`;
+    const { why, tip } = lessonFor(round, result);
+    banner.innerHTML = `<b>${label}</b>${lessonHtml(why, 'why')}${tip ? lessonHtml(tip, 'tip') : ''}${round.note ? `<p class="why">${esc(round.note)}</p>` : ''}`;
   }
 
   /**
@@ -371,9 +388,9 @@ export class UI {
           <div class="ranger"><small>${this.avatar('ranger')} Ranger</small><b>${totals.ranger}</b></div>
           <div class="predator"><small>${this.avatar(scenario.predator.animal)} ${esc(scenario.predator.name)}</small><b>${totals.predator}</b></div>
         </div>
-        <h3>${missed.length ? 'Field notes: defences to remember' : 'Flawless defence! Field notes'}</h3>
+        <h3>${missed.length ? 'Best defences to remember' : 'Flawless defence! Best defences'}</h3>
         <ol class="lessons">
-          ${lessons.map((p) => `<li><b>${esc(p.round.stage)}: ${esc(bestOption(p.round.ranger).text)}</b><span>${esc(p.round.note)}</span></li>`).join('')}
+          ${lessons.map((p) => `<li><small>${esc(p.round.stage)} · ${esc(p.round.situation)}</small><b>${esc(bestOption(p.round.ranger).text)}</b>${p.round.note ? `<span>${esc(p.round.note)}</span>` : ''}</li>`).join('')}
         </ol>
         <p class="again">${
           mode === 'teams'

@@ -5,9 +5,11 @@ import { isAbort } from '../net/link';
 import { parsePhoneMsg, type HubEvent, type Outcome, type PhoneMsg, type PhoneView } from '../net/teams-protocol';
 import type { Savanna } from '../scene/world';
 import type { Played, Totals, UI } from '../ui/ui';
+import { lessonFor } from './lesson';
+import { readingSeconds } from './reading';
 import { bestOption, type RoundResult } from './scoring';
 import { Seats, Vote } from './seats';
-import { applyResult, collectPicks, randomScenario, shuffle, startGame } from './session';
+import { applyResult, collectPicks, dealScenario, shuffle, startGame } from './session';
 import type { Option, Round, Scenario, Side } from './types';
 
 // Team Battle: this screen runs the game and shows the savanna; each team plays on one phone
@@ -125,7 +127,7 @@ class TeamBattle {
   }
 
   private async playGame(signal: AbortSignal): Promise<void> {
-    const scenario = randomScenario();
+    const { scenario } = dealScenario();
     this.phase = { kind: 'briefing' };
     this.refreshAll();
     startGame(scenario, 'teams', this.world, this.ui);
@@ -137,13 +139,15 @@ class TeamBattle {
       const order = { ranger: shuffle([...round.ranger.options.keys()]), predator: shuffle([...round.predator.options.keys()]) };
       const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
       this.ui.round(scenario, round, index, options, 'teams', totals);
-      const question = { kind: 'question' as const, scenario, round, index, options, deadline: performance.now() + ROUND_SECONDS * 1000, locked: {} as Partial<Record<Side, number>> };
+      const readSeconds = readingSeconds(round);
+      const question = { kind: 'question' as const, scenario, round, index, options, deadline: performance.now() + (readSeconds + ROUND_SECONDS) * 1000, locked: {} as Partial<Record<Side, number>> };
       this.phase = question;
       this.showSeats();
       this.refreshAll();
 
       const picks = await collectPicks(
         options,
+        readSeconds,
         this.ui,
         (choose, end) => {
           this.onTeam = (side, msg) => {
@@ -302,6 +306,8 @@ class TeamBattle {
           round: p.index,
           total: p.scenario.rounds.length,
           stage: p.round.stage,
+          situation: p.round.situation,
+          detail: p.round.detail,
           prompt: p.round[side].prompt,
           options: p.options[side].map((o) => o.text),
           endsInMs: Math.max(0, p.deadline - performance.now()),
@@ -317,6 +323,7 @@ class TeamBattle {
           points: side === 'ranger' ? p.result.rangerPoints : p.result.predatorPoints,
           totals: { ...p.totals },
           outcome: outcome(p.result),
+          lesson: lessonFor(p.round, p.result),
           youTappedNext: p.vote.has(side),
           otherTappedNext: p.vote.has(other(side)),
         };

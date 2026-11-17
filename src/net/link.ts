@@ -17,7 +17,7 @@ const PEER_OPTIONS: PeerOptions = {
   ...(env.VITE_PEER_HOST && { host: env.VITE_PEER_HOST, port: Number(env.VITE_PEER_PORT ?? 443), path: env.VITE_PEER_PATH ?? '/', secure: true }),
 };
 
-const ID_PREFIX = 'savanna-shield-v1-';
+const ID_PREFIX = 'savanna-shield-v2-';
 // No 0/O, 1/I/L: codes get read aloud and typed on phones.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 4;
@@ -28,7 +28,8 @@ const SILENCE_MS = 10_000;
 /** Host → guest: start/round/lock/reveal/end/hello. Guest → host: pick/ready. Both: ping. `bye` is local-only. */
 export type Msg =
   | { t: 'hello'; side: Side }
-  | { t: 'start'; scenario: string }
+  /** Indices into the question pool, in play order. */
+  | { t: 'start'; questions: number[] }
   | { t: 'round'; index: number; order: Record<Side, number[]> }
   | { t: 'pick'; round: number; index: number }
   | { t: 'lock' }

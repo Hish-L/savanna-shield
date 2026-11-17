@@ -60,7 +60,19 @@ h1 { font-size: 2.2rem; text-align: center; text-transform: uppercase; }
 .timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
 .timer .fill.urgent { background: var(--wbc-red); }
 body[data-side] .timer .fill.urgent { background: var(--best); }
-.prompt { font-size: 1.6rem; }
+.read-hint { margin: -0.4rem 0 0; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
+.read-hint[hidden] { display: none; }
+/* The question: a solid panel so it's clearly what's being asked. */
+.situation {
+  margin: 0; padding: 0.9rem 1rem; border-radius: 1rem; background: #fff; color: var(--wbc-navy-deep, #110f33);
+  border: 0.22rem solid var(--wbc-red); box-shadow: 0 0.3rem 0 #000; font-size: 1.05rem; font-weight: 600; line-height: 1.35;
+}
+.situation b { display: block; margin-bottom: 0.3rem; font-size: 1.5rem; font-weight: 900; line-height: 1.15; }
+.prompt { font-size: 1.3rem; }
+.lesson { display: grid; gap: 0.6rem; padding: 0.8rem 1rem; border-radius: 1rem; background: var(--panel); }
+.lesson p { margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.35; }
+.lesson p:last-child { color: var(--best); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.lesson p:last-child strong { display: block; margin-top: 0.2rem; color: #fff; font-size: 1.05rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .options { display: grid; gap: 0.7rem; }
 .opt {
   display: flex; align-items: center; gap: 0.8rem; min-height: 4.2rem; padding: 0.8rem 1rem; text-align: left;
