@@ -14,9 +14,11 @@ const hub = (): Plugin => ({
   },
 });
 
-export default defineConfig({
-  base: '/savanna-shield/',
+// GitHub Pages serves the site under /savanna-shield/. Dev and the booth (`npm run booth` passes --base /)
+// serve from the root, where the Team Battle phone links (/play) live.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/savanna-shield/' : '/',
   plugins: [hub()],
   server: { host: true },
   build: { rollupOptions: { input: { main: 'index.html', play: 'play.html' } } },
-});
+}));

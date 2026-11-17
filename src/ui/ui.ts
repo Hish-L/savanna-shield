@@ -395,7 +395,7 @@ export class UI {
         <p class="again">${
           mode === 'teams'
             ? 'Tap <b>Rematch</b> on both phones to play again · <kbd>Esc</kbd> next teams'
-            : `Press <kbd>Space</kbd> or tap ${isOnline(mode) ? 'for a rematch' : 'to play again'}`
+            : `${matchMedia('(hover: none)').matches ? 'Tap' : 'Press <kbd>Space</kbd> or tap'} ${isOnline(mode) ? 'for a rematch' : 'to play again'}`
         }</p>
       </div>`;
     // A short grace period so a double press of Space on the last reveal doesn't skip the debrief.

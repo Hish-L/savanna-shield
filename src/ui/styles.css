@@ -284,21 +284,35 @@ kbd {
 /* Portrait / small screens: stack the cards. */
 @media (max-aspect-ratio: 1/1) {
   :root { font-size: max(12px, 2.2vw); }
-  .topbar { width: 92vw; min-width: 0; top: 8vh; padding: 1rem 1rem 0.8rem; }
-  .card { top: auto; transform: none; width: 47vw; bottom: 1vh; padding: 0.8rem; animation: none; }
-  .card.ranger { left: 1.5vw; }
-  .card.predator { right: 1.5vw; }
+  .title > .brand { font-size: 1.1rem; }
+  .screen h1 { font-size: 13vw; }
+  .screen h2 { font-size: 2.6rem; }
+  .tagline, .role { font-size: 1.15rem; }
+  .brief { font-size: 1.3rem; }
+  .modes { gap: 0.7rem; width: min(100%, 26rem); margin-top: 0.4rem; }
+  /* Menu buttons become compact rows: key | label over subtitle. */
+  .modes .mode { width: 100%; grid-template-columns: auto 1fr; justify-items: start; align-items: center; column-gap: 0.8rem; row-gap: 0.1rem; padding: 0.7rem 1rem; text-align: left; }
+  .modes .mode kbd { grid-row: span 2; }
+  .modes .mode b { font-size: 1.2rem; }
+  .mode.share { min-width: 0; width: 100%; }
+  /* In game, the question and cards stack in normal flow, so they can never overlap whatever the
+     screen height; the HUD scrolls if a screen is too short for everything. */
+  .hud {
+    display: flex; flex-direction: column; gap: 1.1rem; overflow-y: auto;
+    padding: max(2vw, env(safe-area-inset-top)) 2vw max(2vw, env(safe-area-inset-bottom));
+  }
+  .hud > :is(.topbar, .card) { position: relative; inset: auto; transform: none; width: auto; min-width: 0; flex-shrink: 0; }
+  /* The topbar's question pill hangs above it. */
+  .hud > .topbar { margin-top: 0.8rem; padding: 1rem 1rem 0.8rem; }
+  .card { padding: 0.8rem; animation: none; }
   .status-chip { top: -0.85rem; padding: 0.15rem 0.7rem; font-size: 0.8rem; border-width: 0.15rem; }
-  /* Cards sit up top during the reveal, so the verdict goes underneath the map. */
   .banner { width: 90vw; bottom: max(1vh, env(safe-area-inset-bottom)); }
-  /* Reveal: both cards become full-width rows stacked at the top, so the picks read on one or two lines.
-     Avatar | name over chosen answer | total. Fixed height so the second row knows where to sit. */
+  /* Reveal: both cards become full-width rows, avatar | name over chosen answer | total. */
   .card.revealed {
-    top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; height: 6rem; padding: 0.55rem 0.7rem;
+    padding: 0.55rem 0.7rem;
     grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; align-content: center; align-items: center;
     column-gap: 0.7rem; row-gap: 0.3rem;
   }
-  .card.predator.revealed { top: calc(2vw + 6.5rem); }
   .card.revealed .who { display: contents; }
   .card.revealed .who .avatar { grid-area: 1 / 1 / 3; width: 3.4rem; height: 3.4rem; }
   .card.revealed .who > div:not(.pts) { grid-area: 1 / 2; }
@@ -308,24 +322,23 @@ kbd {
   .card.revealed :is(.opt.chosen, .timeout) { grid-area: 2 / 2; }
   .card.revealed .opt.best:not(.chosen) { grid-area: 3 / 2; margin-top: 0.7rem; }
   .card.revealed .opt:is(.chosen, .best) { gap: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.95rem; }
-  .card.revealed .opt:is(.chosen, .best) span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+  .card.revealed .opt:is(.chosen, .best) span { line-height: 1.2; }
   .card.revealed .opt.chosen em { font-size: 1.1rem; }
   .card.revealed .opt.best { padding-top: 1rem; }
   /* Room for the best answer row under the pick. */
-  .show-best .card.revealed { height: 10.8rem; grid-template-rows: auto auto auto; }
-  .show-best .card.predator.revealed { top: calc(2vw + 11.6rem); }
-  .revealing .topbar { opacity: 0; }
+  .show-best .card.revealed { grid-template-rows: auto auto auto; }
+  .revealing .topbar { display: none; }
 
   /* One player on a phone (online or vs computer): your card fills the width, the opponent shrinks to a status strip up top. */
-  :root:has(.hud.one-player) { font-size: max(14px, 3.6vw); }
-  .one-player .card:not(.ai):not(.revealed) { left: 2vw; right: 2vw; width: auto; bottom: max(2vw, env(safe-area-inset-bottom)); }
-  .one-player .card.ai:not(.revealed) { top: 2vw; bottom: auto; left: 2vw; right: 2vw; width: auto; padding: 0.5rem 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
+  /* Scales with height too, so short or wide-ish portrait screens shrink the text instead of scrolling. */
+  :root:has(.hud.one-player) { font-size: clamp(13px, min(3.6vw, 2.2vh), 22px); }
+  .one-player .card:not(.ai):not(.revealed) { margin-top: auto; }
+  .one-player .card.ai:not(.revealed) { order: -1; padding: 0.5rem 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
   .one-player .card.ai:not(.revealed) .who { flex: 1; }
   .one-player .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
   .one-player .card.ai:not(.revealed) .who small, .one-player .card.ai:not(.revealed) .who .pts { display: none; }
   .one-player .card.ai:not(.revealed) :is(.timer, .read-hint, .prompt, .opt, .status-chip) { display: none; }
   .one-player .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
-  .one-player .topbar { top: 6.4rem; }
   .one-player .topbar .stage b { font-size: 1.05rem; }
   .one-player .topbar .detail { font-size: 1rem; }
   .one-player .topbar .stage small { font-size: 0.7rem; top: -0.8rem; }
@@ -334,23 +347,28 @@ kbd {
 
   /* Two players sharing a phone: each card takes the full width, the Ranger under the round title
      and the Predator at the bottom, with the reserve in between. */
-  :root:has(.hud.shared) { font-size: max(13px, 3.2vw); }
-  .shared .topbar { top: max(1vh, env(safe-area-inset-top)); }
+  :root:has(.hud.shared) { font-size: clamp(12px, min(3.2vw, 2.05vh), 20px); }
   .shared .topbar .stage b { font-size: 1.05rem; }
   .shared .topbar .detail { display: none; }
   .shared .topbar { padding: 0.9rem 0.8rem 0.5rem; }
   .shared .topbar .stage small { font-size: 0.65rem; top: -0.75rem; }
   .shared .timer { height: 0.5rem; }
-  .shared .card:not(.revealed) { left: 2vw; right: 2vw; width: auto; gap: 0.45rem; padding: 0.6rem 0.8rem; }
-  .shared .card.ranger:not(.revealed) { top: calc(max(1vh, env(safe-area-inset-top)) + 6.2rem); bottom: auto; }
-  .shared .card.predator:not(.revealed) { bottom: max(1vh, env(safe-area-inset-bottom)); }
+  .shared .card:not(.revealed) { gap: 0.45rem; padding: 0.6rem 0.8rem; }
+  .shared .card.predator:not(.revealed) { margin-top: auto; }
   .shared .card:not(.revealed) .who .avatar { width: 2.8rem; height: 2.8rem; }
   .shared .card:not(.revealed) .who b { font-size: 1.1rem; }
   .shared .card:not(.revealed) .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
   .shared .card:not(.revealed) .prompt { margin: 0; font-size: 1.15rem; }
   .prompt { white-space: normal; }
   .shared .card:not(.revealed) .opt { padding: 0.45rem 0.7rem; font-size: 1rem; }
-  .screen { justify-content: safe center; overflow-y: auto; padding: 2rem 1.2rem; }
+  .screen { justify-content: safe center; overflow-y: auto; gap: 0.8rem; padding: max(1.2rem, env(safe-area-inset-top)) 1.2rem max(1.2rem, env(safe-area-inset-bottom)); }
+
+  /* Reveal: the verdict joins the stack under the cards, so full answers (up to 80 chars) wrap. */
+  .hud.revealing { gap: 0.6rem; }
+  /* Hidden until the reveal; its offset start position would otherwise add a few px of scroll. */
+  .hud:not(.revealing) > .banner { display: none; }
+  .hud.revealing > .banner { position: static; width: auto; margin-top: auto; flex-shrink: 0; transform: none; }
+  .hud.revealing > .banner.breach { animation: shake-x 0.4s; }
   .panel { width: 100%; }
   .room-code { font-size: 4.5rem; }
 }
@@ -385,3 +403,8 @@ kbd {
 .slot.joined small { opacity: 1; color: var(--accent); }
 .slot.away small { color: var(--best); animation: pulse 1.6s infinite; }
 .team-lobby .url { margin: 0; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.03em; }
+
+/* Touch screens have no Space or Esc key: hide those hints and keep the tap targets. */
+@media (hover: none) {
+  .link-button kbd { display: none; }
+}

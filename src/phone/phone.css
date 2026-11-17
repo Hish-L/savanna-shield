@@ -123,3 +123,15 @@ body.offline .reconnecting { opacity: 1; animation: pulse 1.6s infinite; }
 body.offline .body { opacity: 0.5; pointer-events: none; }
 
 @keyframes pulse { 50% { opacity: 0.4; } }
+
+/* Short phones (iPhone SE, 667px): tighten so a worst-case question and all 3 answers fit without scrolling. */
+@media (max-height: 700px) {
+  :root { font-size: clamp(14px, 3.9vw, 22px); }
+  header { margin-bottom: 0.6rem; }
+  .body { gap: 0.6rem; }
+  .situation { padding: 0.7rem 0.9rem; font-size: 0.95rem; }
+  .situation b { font-size: 1.25rem; }
+  .prompt { font-size: 1.15rem; }
+  .options { gap: 0.5rem; }
+  .opt { min-height: 3.4rem; padding: 0.6rem 0.9rem; font-size: 1rem; }
+}

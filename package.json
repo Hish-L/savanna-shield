@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && tsc -p tsconfig.node.json && vite build",
     "preview": "vite preview",
-    "booth": "npm run build && node server/booth.ts",
+    "booth": "npm run build -- --base / && node server/booth.ts",
     "test": "vitest run"
   },
   "dependencies": {
