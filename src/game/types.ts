@@ -1,7 +1,7 @@
 export type Side = 'ranger' | 'predator';
 export type Animal = 'hyena' | 'crocodile' | 'poacher';
-/** `online-<side>`: this device plays <side> against a remote player. `teams`: both sides play on phones (Team Battle). */
-export type Mode = 'duel' | 'solo-ranger' | 'solo-predator' | 'online-ranger' | 'online-predator' | 'teams';
+/** `teams`: both sides play on phones (Play Together). */
+export type Mode = 'duel' | 'solo-ranger' | 'solo-predator' | 'teams';
 
 /** Visual consequence of a Predator option that lands. */
 export type Effect = 'steal' | 'burn';

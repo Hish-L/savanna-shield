@@ -7,35 +7,40 @@ A one-minute cyber security booth game. The Chief Ranger (Westpac Cyber Defender
 ```sh
 npm install
 npm run dev      # http://localhost:5173
-npm run booth    # build, then serve on http://localhost:8080 with Team Battle (see below)
+npm run booth    # build, then serve on http://localhost:8080 with an offline Play Together relay (see below)
+npm run relay    # deploy the Cloudflare relay for Play Together online
 npm test         # scoring + scenario content checks
 npm run build    # static site in dist/ (works offline on the booth machine)
 ```
 
-Controls: Ranger `A S D`, Predator `J K L`, or click/tap the answers. On the title screen press `1` (2 players), `2` (solo Ranger), `3` (solo Predator), `4` (online), or `5` (Team Battle). Press `Space` (or tap Continue) to move on after each round's reveal and to leave the end-of-game screen.
+Controls: Ranger `A S D`, Predator `J K L`, or click/tap the answers. On the title screen press `1` (2 players), `2` (solo Ranger), `3` (solo Predator), or `4` (Play Together). Press `Space` (or tap Continue) to move on after each round's reveal and to leave the end-of-game screen.
 
 Each question starts with reading time: the words in its title and description at 3 words a second, plus 3 seconds (about 8–11s). The timer bar stays full and shows a countdown, and then players have 15 seconds to answer. Players can lock in during reading time too. The pace, buffer and answer time are in `src/config.ts`.
 
-## Team Battle (local network)
+## Play Together
 
-The booth screen shows only the game, and two teams each play on one phone. Each team talks it over and taps its answer. The phones show their own question, the 3 answers and the timer, then their result after each reveal. The answers only appear on the big screen at the reveal.
+One screen runs the game and shows the savanna. Each side plays on a phone: one phone per team at the booth, or one each for two players anywhere. The phones show their own question, the 3 answers and the timer, then their result after each reveal. The answers only appear on the big screen at the reveal.
 
-1. `npm run booth` on the booth laptop (or `npm run dev` while developing). It prints the phone address. Allow Node through the macOS firewall prompt the first time.
-2. Open `http://localhost:8080` on the big screen and press `5`.
-3. Each team scans the QR code (or opens the printed `http://<laptop-ip>:8080/play`) and picks Ranger or Predator. The game starts once both sides are taken.
-4. After each reveal, both phones tap **Next** to continue. At the end, both tap **Rematch** to play again with the same teams.
+1. Open the game on the big screen (or the host's laptop) and press `4`. It shows a QR code and a 4-letter room code.
+2. Each team scans the QR code, or opens `…/play.html` and types the code, then picks Ranger or Predator. The game starts once both sides are taken.
+3. After each reveal, both phones tap **Next** to continue. At the end, both tap **Rematch** to play again with the same teams.
 
-Operator keys: `Space` moves on without waiting for the phones, and `Esc` ends the game and frees both seats for the next teams (`Esc` again leaves to the title screen). If a phone locks or drops, it rejoins its seat automatically when it comes back. Any round it misses scores 0, like a timeout.
+Operator keys: `Space` moves on without waiting for the phones, and `Esc` ends the game and frees both seats for the next teams (`Esc` again leaves to the title screen). If a phone locks or drops, it rejoins its seat automatically when it comes back, and a refreshed big screen keeps its room code. Any round a phone misses scores 0, like a timeout.
 
-Nothing goes over the internet: the laptop runs a small relay (`server/hub.ts`) and the big-screen browser runs the game (`src/game/teams.ts`). The phones (`play.html`, `src/phone/`) only draw what the screen sends them. The phones and laptop must be on a network that lets devices talk to each other. Guest and corporate Wi-Fi often isolate clients, so bring a travel router or use the laptop's hotspot. Set `PORT` to change the port.
+The big-screen browser runs the game (`src/game/teams.ts`). The phones (`play.html`, `src/phone/`) only draw what the screen sends them. Messages pass through a small relay, and nothing else runs on a server:
 
-## Online play
+- **Online (GitHub Pages):** a Cloudflare Worker (`relay/worker.ts`) with one Durable Object per room. It uses `wss://` on port 443, so it works on mobile data, home Wi-Fi, VPNs and Zscaler. The Workers Free plan allows 100k requests a day (resets 00:00 UTC). A game uses about 10, so that's roughly 10,000 games a day. Never send per-second updates through the relay: the phones run their own timers.
+- **Offline booth:** `npm run booth` serves the game and runs the same relay locally (`server/hub.ts`). Phones and laptop must be on a network that lets devices talk to each other. Guest and corporate Wi-Fi often isolate clients, so bring a travel router or use the laptop's hotspot. Set `PORT` to change the port.
 
-Two people on their own phones or laptops. The host picks a side and gets a 4-letter code (plus a `?join=CODE` invite link); the other player enters it. Each device only shows its own question; the opponent's answer is hidden until the reveal.
+### The Cloudflare relay
 
-There is no game server. Browsers connect directly over WebRTC using [PeerJS](https://peerjs.com); its free public broker (`0.peerjs.com`) only introduces the two players, and Google's public STUN servers let each browser find its public address. This works on phones (mobile data, home Wi-Fi) but not behind networks that rewrite ports per destination, such as Zscaler on work laptops: even two tabs on one such laptop can't connect. To support those, add a TURN relay at build time with `VITE_TURN_URLS` (comma-separated), `VITE_TURN_USERNAME` and `VITE_TURN_CREDENTIAL`. The host's browser runs the game and the guest's only sends its picks (`src/net/link.ts`, `src/game/online.ts`).
+It's deployed at `wss://savanna-relay.hishamlegha.workers.dev`, set in `src/net/hub.ts` (`CLOUD_RELAY`). The site uses it when it's served from `*.github.io`; the booth and dev servers use their own local relay. The address stays the same across deploys and only changes if the Worker or the account's `workers.dev` subdomain is renamed.
 
-Deploy to Vercel (or any static host) as-is: framework preset Vite, build `npm run build`, output `dist`. Online play needs internet; the booth modes still work offline. To use a self-hosted PeerJS server instead, set `VITE_PEER_HOST` (and optionally `VITE_PEER_PORT`, `VITE_PEER_PATH`) at build time.
+To change the relay code, run `npx wrangler login` once, then `npm run relay` to redeploy.
+
+The relay only accepts games from the origins in `relay/wrangler.toml` (`ALLOWED_ORIGINS`) and localhost. If a corporate filter blocks `*.workers.dev`, add a custom domain to the Worker in the Cloudflare dashboard and point `RELAY_URL` at it.
+
+To try the real Cloudflare relay before pushing: `VITE_RELAY_URL=wss://savanna-relay.hishamlegha.workers.dev npm run dev`, then use browser tabs on `localhost` (the relay only accepts the Pages site and localhost). To try relay code changes without deploying: `npm run relay:dev`, then `VITE_RELAY_URL=ws://localhost:8787 npm run dev`. Plain `npm run dev` uses the local relay.
 
 ## How scoring works
 
@@ -51,9 +56,10 @@ Option `effect: 'steal'` muddies the watering hole; `effect: 'burn'` sets the ra
 
 ## Where things live
 
-- `src/game/`: rules (scoring, AI opponent, game flow, Team Battle)
-- `src/phone/`, `play.html`: Team Battle phone controller
-- `server/`: booth server and Team Battle relay
+- `src/game/`: rules (scoring, AI opponent, game flow, Play Together)
+- `src/phone/`, `play.html`: Play Together phone controller
+- `server/`: offline booth server and local relay
+- `relay/`: Cloudflare relay for online play
 - `src/scenarios/`: question pool and dealing
 - `src/scene/`: Three.js savanna, animals, and effects
 - `src/ui/`: HTML overlay (cards, timer, debrief)

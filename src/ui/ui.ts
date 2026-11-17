@@ -4,7 +4,6 @@ import { QUESTIONS_PER_GAME } from '../scenarios';
 import { lessonFor, type LessonLine } from '../game/lesson';
 import { bestOption, type RoundResult } from '../game/scoring';
 import type { Mode, Option, Round, Scenario, Side } from '../game/types';
-import { CODE_LENGTH, normalizeCode } from '../net/link';
 import type { Portrait } from '../scene/portraits';
 import './styles.css';
 
@@ -28,16 +27,12 @@ export interface Played {
   result: RoundResult;
 }
 
-export const isHuman = (mode: Mode, side: Side) => mode === 'duel' || mode === `solo-${side}` || mode === `online-${side}`;
-export const isOnline = (mode: Mode) => mode.startsWith('online-');
+export const isHuman = (mode: Mode, side: Side) => mode === 'duel' || mode === `solo-${side}`;
 /** The one side this device plays, or null when both sides show on this screen. */
 export const localSide = (mode: Mode): Side | null => (mode === 'duel' || mode === 'teams' ? null : isHuman(mode, 'ranger') ? 'ranger' : 'predator');
 
 /** Team Battle lobby slot state. */
 export type SlotState = 'open' | 'joined' | 'away';
-
-/** What the player picked on the online menu. */
-export type Choice = { kind: 'host'; side: Side } | { kind: 'join'; code: string };
 
 /** All DOM rendering. The game flow calls these; clicks on answer buttons go to onPick. */
 export class UI {
@@ -59,13 +54,12 @@ export class UI {
     return `<img class="avatar ${variant}" src="${this.portraits[who]}" alt="">`;
   }
 
-  title(): Promise<Mode | 'online'> {
-    const modes: { mode: Mode | 'online'; key: string; label: string; sub: string }[] = [
+  title(): Promise<Mode> {
+    const modes: { mode: Mode; key: string; label: string; sub: string }[] = [
       { mode: 'duel', key: '1', label: 'Ranger vs Predator', sub: '2 players, head to head' },
       { mode: 'solo-ranger', key: '2', label: 'Play the Ranger', sub: 'Defend against the computer' },
       { mode: 'solo-predator', key: '3', label: 'Play the Predator', sub: 'Think like an attacker' },
-      { mode: 'online', key: '4', label: 'Play Online', sub: '2 players, 2 devices' },
-      { mode: 'teams', key: '5', label: 'Team Battle', sub: '2 teams, 1 phone each' },
+      { mode: 'teams', key: '4', label: 'Play Together', sub: 'Teams or friends, on phones' },
     ];
     this.root.innerHTML = `
       <div class="screen title">
@@ -77,7 +71,7 @@ export class UI {
         </div>
       </div>`;
     return new Promise((resolve) => {
-      const done = (mode: Mode | 'online') => {
+      const done = (mode: Mode) => {
         window.removeEventListener('keydown', onKey);
         resolve(mode);
       };
@@ -86,14 +80,14 @@ export class UI {
         if (m) done(m.mode);
       };
       window.addEventListener('keydown', onKey);
-      this.root.querySelectorAll<HTMLButtonElement>('button.mode').forEach((b) => (b.onclick = () => done(b.dataset.mode as Mode | 'online')));
+      this.root.querySelectorAll<HTMLButtonElement>('button.mode').forEach((b) => (b.onclick = () => done(b.dataset.mode as Mode)));
     });
   }
 
   briefing(scenario: Scenario, mode: Mode, seconds: number): void {
     const p = scenario.predator;
     const controls = (side: Side) =>
-      mode === 'teams' ? 'Phone' : isOnline(mode) ? (isHuman(mode, side) ? 'You' : 'Opponent') : isHuman(mode, side) ? KEYS[side].join(' ') : 'Computer';
+      mode === 'teams' ? 'Phone' : isHuman(mode, side) ? KEYS[side].join(' ') : 'Computer';
     this.root.innerHTML = `
       <div class="screen briefing">
         ${BRAND}
@@ -123,10 +117,10 @@ export class UI {
         ${options[side]
           .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : mode === 'teams' ? 'ABC'[i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
           .join('')}
-        <div class="lock">${isHuman(mode, side) ? 'Locked in' : mode === 'teams' ? 'Team is choosing…' : isOnline(mode) ? 'Opponent is choosing…' : 'Computer is thinking…'}</div>
+        <div class="lock">${isHuman(mode, side) ? 'Locked in' : mode === 'teams' ? 'Team is choosing…' : 'Computer is thinking…'}</div>
       </section>`;
     this.root.innerHTML = `
-      <div class="hud ${isOnline(mode) ? 'online' : ''} ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
+      <div class="hud ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
           <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
@@ -194,15 +188,10 @@ export class UI {
 
   /**
    * Ends the reveal with a Continue prompt and resolves when Space is pressed or it's tapped.
-   * An online guest only sees a waiting message, since the host starts the next round.
    * Aborting `signal` stops listening (the promise then never resolves).
    */
-  continueAfterReveal(guest = false, signal?: AbortSignal): Promise<void> {
+  continueAfterReveal(signal?: AbortSignal): Promise<void> {
     const banner = this.root.querySelector('.banner')!;
-    if (guest) {
-      banner.insertAdjacentHTML('beforeend', `<p class="again">Waiting for your opponent…</p>`);
-      return Promise.resolve();
-    }
     banner.insertAdjacentHTML('beforeend', `<button class="link-button next"><kbd>Space</kbd> Continue</button>`);
     return this.onSpace(banner.querySelector('.next')!, signal);
   }
@@ -229,8 +218,8 @@ export class UI {
     if (away) card.querySelector('.who')?.insertAdjacentHTML('afterend', '<div class="away-badge">📵 Phone reconnecting…</div>');
   }
 
-  /** Team Battle waiting room: QR code for the phones and the two team slots. */
-  teamLobby(playUrl: string, qrSvg: string, slots: Record<Side, SlotState>, onBack: () => void): void {
+  /** Team Battle waiting room: QR code for the phones, the room code (cloud relay only) and the two team slots. */
+  teamLobby(playUrl: string, qrSvg: string, code: string | null, slots: Record<Side, SlotState>, onBack: () => void): void {
     const label: Record<SlotState, string> = { open: 'Scan to join', joined: 'Ready', away: 'Reconnecting…' };
     const slot = (side: Side, name: string, who: Portrait) =>
       `<div class="slot ${side} ${slots[side]}">${this.avatar(who)}<b>${name}</b><small>${label[slots[side]]}</small></div>`;
@@ -238,8 +227,8 @@ export class UI {
     this.root.innerHTML = `
       <div class="screen team-lobby">
         ${BRAND}
-        <h2>Team Battle</h2>
-        <p class="role">One phone per team. Talk it over, then tap your answer.</p>
+        <h2>Play Together</h2>
+        <p class="role">One phone per team, or one each for 2 players anywhere. Answers stay hidden until the reveal.</p>
         <div class="join-row">
           <div class="qr">${qrSvg}</div>
           <div class="slots">
@@ -247,7 +236,11 @@ export class UI {
             ${slot('predator', 'Predator team', 'hyena')}
           </div>
         </div>
-        <p class="url">${esc(playUrl.replace(/^https?:\/\//, ''))}</p>
+        ${
+          code
+            ? `<p class="url">Scan, or open ${esc(playUrl.replace(/^https?:\/\//, '').replace(/\?.*/, ''))} and enter</p><div class="room-code">${code}</div>`
+            : `<p class="url">${esc(playUrl.replace(/^https?:\/\//, ''))}</p>`
+        }
         <p class="waiting">${waitingFor.length ? `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
         <button class="link-button back"><kbd>Esc</kbd> Back</button>
       </div>`;
@@ -276,75 +269,6 @@ export class UI {
       window.addEventListener('keydown', onKey);
       target.addEventListener('pointerdown', done);
     });
-  }
-
-  /** Host or join an online game. Resolves null on Back. */
-  onlineMenu(prefillCode = ''): Promise<Choice | null> {
-    this.root.innerHTML = `
-      <div class="screen online-menu">
-        ${BRAND}
-        <h2>Play Online</h2>
-        <p class="role">Each player uses their own phone or laptop. Answers stay hidden until the reveal.</p>
-        <div class="panels">
-          <section class="panel">
-            <h3>Host a game</h3>
-            <p>Pick your side, then share the code.</p>
-            <button class="mode side ranger" data-side="ranger">${this.avatar('ranger')}<b>Ranger</b><small>Defend</small></button>
-            <button class="mode side predator" data-side="predator">${this.avatar('hyena')}<b>Predator</b><small>Attack</small></button>
-          </section>
-          <section class="panel">
-            <h3>Join a game</h3>
-            <p>Enter the code from the host.</p>
-            <form class="join">
-              <input class="code-input" name="code" value="${esc(prefillCode)}" maxlength="${CODE_LENGTH}" placeholder="CODE"
-                autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Game code">
-              <button class="mode" type="submit"><b>Join</b></button>
-            </form>
-          </section>
-        </div>
-        <button class="link-button back">Back</button>
-      </div>`;
-    return new Promise((resolve) => {
-      const input = this.root.querySelector<HTMLInputElement>('.code-input')!;
-      input.oninput = () => (input.value = normalizeCode(input.value));
-      this.root.querySelectorAll<HTMLButtonElement>('button.side').forEach((b) => (b.onclick = () => resolve({ kind: 'host', side: b.dataset.side as Side })));
-      this.root.querySelector<HTMLFormElement>('form.join')!.onsubmit = (e) => {
-        e.preventDefault();
-        const code = normalizeCode(input.value);
-        if (code.length === CODE_LENGTH) resolve({ kind: 'join', code });
-        else input.classList.add('invalid'), input.focus();
-      };
-      this.root.querySelector<HTMLButtonElement>('.back')!.onclick = () => resolve(null);
-    });
-  }
-
-  /** Host waiting room: shows the code and a share link. */
-  lobby(code: string, side: Side, onCancel: () => void): void {
-    const url = `${location.origin}${location.pathname}?join=${code}`;
-    const canShare = typeof navigator.share === 'function';
-    this.root.innerHTML = `
-      <div class="screen lobby">
-        ${BRAND}
-        <small class="eyebrow">You're the ${side === 'ranger' ? 'Ranger' : 'Predator'}</small>
-        <p class="role">Tell your opponent to open this site and enter</p>
-        <div class="room-code">${code}</div>
-        <button class="mode share"><b>${canShare ? 'Share invite link' : 'Copy invite link'}</b><small>${esc(url.replace(/^https?:\/\//, ''))}</small></button>
-        <p class="waiting">Waiting for opponent to join…</p>
-        <button class="link-button cancel">Cancel</button>
-      </div>`;
-    const share = this.root.querySelector<HTMLButtonElement>('.share')!;
-    share.onclick = async () => {
-      try {
-        if (canShare) await navigator.share({ title: 'Savannah Shield', text: `Join my Savannah Shield game: ${code}`, url });
-        else {
-          await navigator.clipboard.writeText(url);
-          share.querySelector('b')!.textContent = 'Link copied!';
-        }
-      } catch {
-        // Share sheet dismissed.
-      }
-    };
-    this.root.querySelector<HTMLButtonElement>('.cancel')!.onclick = onCancel;
   }
 
   /** A simple "please wait" screen with an optional cancel button. */
@@ -378,7 +302,7 @@ export class UI {
     }[winner];
     const missed = played.filter((p) => p.result.ranger !== bestOption(p.round.ranger));
     const lessons = (missed.length ? missed : played).slice(0, 3);
-    const youWon = !localSide(mode) || winner === 'draw' ? '' : isHuman(mode, winner) ? 'You won! ' : isOnline(mode) ? 'Your opponent won. ' : 'The computer won. ';
+    const youWon = !localSide(mode) || winner === 'draw' ? '' : isHuman(mode, winner) ? 'You won! ' : 'The computer won. ';
     this.root.innerHTML = `
       <div class="screen debrief ${winner}">
         ${BRAND}
@@ -395,7 +319,7 @@ export class UI {
         <p class="again">${
           mode === 'teams'
             ? 'Tap <b>Rematch</b> on both phones to play again · <kbd>Esc</kbd> next teams'
-            : `${matchMedia('(hover: none)').matches ? 'Tap' : 'Press <kbd>Space</kbd> or tap'} ${isOnline(mode) ? 'for a rematch' : 'to play again'}`
+            : `${matchMedia('(hover: none)').matches ? 'Tap' : 'Press <kbd>Space</kbd> or tap'} to play again`
         }</p>
       </div>`;
     // A short grace period so a double press of Space on the last reveal doesn't skip the debrief.

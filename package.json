@@ -8,10 +8,11 @@
     "build": "tsc && tsc -p tsconfig.node.json && vite build",
     "preview": "vite preview",
     "booth": "npm run build -- --base / && node server/booth.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "relay": "wrangler deploy -c relay/wrangler.toml",
+    "relay:dev": "wrangler dev -c relay/wrangler.toml"
   },
   "dependencies": {
-    "peerjs": "^1.5.5",
     "qrcode": "^1.5.4",
     "three": "^0.186.1",
     "ws": "^8.22.0"
@@ -23,6 +24,7 @@
     "@types/ws": "^8.18.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.164.0"
   }
 }

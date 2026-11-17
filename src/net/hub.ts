@@ -4,7 +4,24 @@ const CONNECT_TIMEOUT_MS = 3_000;
 const RETRY_MS = 1_000;
 
 export const NO_HUB =
-  "Team Battle needs the booth server. Start the game with `npm run booth` (or `npm run dev`) and open it from that address.";
+  "Couldn't reach the game relay. Check your internet connection, or run the booth server (`npm run booth`) and open the game from that address.";
+
+// No 0/O, 1/I/L: codes get read aloud and typed on phones.
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const CODE_LENGTH = 4;
+export const normalizeCode = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
+export const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(CODE_LENGTH)), (b) => ALPHABET[b % ALPHABET.length]).join('');
+
+/** The Cloudflare relay (relay/worker.ts). Its address only changes if the Worker or the account's workers.dev subdomain is renamed. */
+const CLOUD_RELAY = 'wss://savanna-relay.hishamlegha.workers.dev';
+/**
+ * GitHub Pages uses the Cloudflare relay; the booth and dev servers use their own /ws (server/hub.ts) so they work offline.
+ * VITE_RELAY_URL overrides it, e.g. to try the Cloudflare relay from `npm run dev`.
+ */
+export const RELAY: string | undefined =
+  (import.meta.env.VITE_RELAY_URL as string | undefined) || (location.hostname.endsWith('.github.io') ? CLOUD_RELAY : undefined);
+export const relayUrl = (room: string) =>
+  `${RELAY ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`}/ws?room=${room}`;
 
 /** The big screen's connection to the Team Battle relay (server/hub.ts). Reconnects if the socket drops. */
 export class HubClient {
@@ -16,18 +33,18 @@ export class HubClient {
   private connected = false;
   private retry = 0;
 
-  private constructor() {}
+  private constructor(readonly room: string) {}
 
   /** Resolves once connected; rejects with NO_HUB if the relay isn't there. */
-  static async connect(): Promise<HubClient> {
-    const hub = new HubClient();
+  static async connect(room: string): Promise<HubClient> {
+    const hub = new HubClient(room);
     await hub.open();
     return hub;
   }
 
   private open(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+      const ws = new WebSocket(relayUrl(this.room));
       const timer = setTimeout(() => ws.close(), CONNECT_TIMEOUT_MS);
       let opened = false;
       ws.onopen = () => {

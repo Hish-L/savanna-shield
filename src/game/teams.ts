@@ -1,7 +1,6 @@
 import QRCode from 'qrcode';
 import { BRIEFING_SECONDS, ROUND_SECONDS } from '../config';
-import { HubClient, NO_HUB } from '../net/hub';
-import { isAbort } from '../net/link';
+import { HubClient, newCode, NO_HUB, RELAY } from '../net/hub';
 import { parsePhoneMsg, type HubEvent, type Outcome, type PhoneMsg, type PhoneView } from '../net/teams-protocol';
 import type { Savanna } from '../scene/world';
 import type { Played, Totals, UI } from '../ui/ui';
@@ -19,6 +18,10 @@ const SIDES: Side[] = ['ranger', 'predator'];
 const NAMES: Record<Side, string> = { ranger: 'Ranger', predator: 'Predator' };
 /** In the lobby, a seat whose phone drops is given back after this long. In a game it's held until Esc. */
 const LOBBY_GRACE_MS = 15_000;
+
+const isAbort = (err: unknown) => err instanceof DOMException && err.name === 'AbortError';
+/** Kept per tab, so a refreshed big screen gets its room (and its seated phones) back. */
+const ROOM_KEY = 'savannah-shield-room';
 
 const other = (side: Side): Side => (side === 'ranger' ? 'predator' : 'ranger');
 const outcome = (r: RoundResult): Outcome => (r.blocked ? 'blocked' : r.breached ? 'breach' : 'fizzle');
@@ -47,17 +50,21 @@ type Phase =
 
 /** Runs Team Battle until the operator presses Esc on the lobby. */
 export async function playTeams(world: Savanna, ui: UI): Promise<void> {
+  const room = sessionStorage.getItem(ROOM_KEY) ?? newCode();
+  sessionStorage.setItem(ROOM_KEY, room);
   let hub: HubClient;
   let playUrl: string;
   try {
-    hub = await HubClient.connect();
-    playUrl = (await (await fetch('/api/info')).json()).playUrl;
+    hub = await HubClient.connect(room);
+    // Cloud: the phone page on this site. Booth server: its LAN address, so phones skip "localhost".
+    const base = RELAY ? `${location.origin}${import.meta.env.BASE_URL}play.html` : (await (await fetch('/api/info')).json()).playUrl;
+    playUrl = `${base}?room=${room}`;
   } catch {
     await ui.notice(NO_HUB);
     return;
   }
   const qr = await QRCode.toString(playUrl, { type: 'svg', margin: 1, color: { dark: '#1f1c4f', light: '#ffffff' } });
-  const battle = new TeamBattle(hub, world, ui, playUrl, qr);
+  const battle = new TeamBattle(hub, world, ui, playUrl, qr, room);
   try {
     await battle.run();
   } finally {
@@ -83,6 +90,7 @@ class TeamBattle {
     private readonly ui: UI,
     private readonly playUrl: string,
     private readonly qr: string,
+    private readonly room: string,
   ) {
     hub.onEvent = (e) => this.onHub(e);
     hub.onReconnect = () => {
@@ -122,7 +130,7 @@ class TeamBattle {
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
     this.grace.forEach(clearTimeout);
-    for (const conn of this.seats.connections()) this.hub.send(conn, { v: 'waiting', message: 'Team Battle has finished. Thanks for playing!' });
+    for (const conn of this.seats.connections()) this.hub.send(conn, { v: 'waiting', message: 'The game has finished. Thanks for playing!' });
     this.hub.close();
   }
 
@@ -176,7 +184,7 @@ class TeamBattle {
       await this.waitForVote(
         vote,
         signal,
-        (s) => this.ui.continueAfterReveal(false, s),
+        (s) => this.ui.continueAfterReveal(s),
         (msg) => msg.t === 'next' && msg.round === index,
         () => this.ui.teamContinue({ ranger: vote.has('ranger'), predator: vote.has('predator') }),
       );
@@ -280,7 +288,7 @@ class TeamBattle {
   private showSeats(): void {
     if (this.phase.kind === 'lobby') {
       const slot = (side: Side) => (!this.seats.isTaken(side) ? 'open' : this.seats.isAway(side) ? 'away' : 'joined');
-      this.ui.teamLobby(this.playUrl, this.qr, { ranger: slot('ranger'), predator: slot('predator') }, () => this.lobbyDone?.(false));
+      this.ui.teamLobby(this.playUrl, this.qr, RELAY ? this.room : null, { ranger: slot('ranger'), predator: slot('predator') }, () => this.lobbyDone?.(false));
     } else {
       for (const side of SIDES) this.ui.seatStatus(side, this.seats.isAway(side));
     }

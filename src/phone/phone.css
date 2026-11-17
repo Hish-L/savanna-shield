@@ -135,3 +135,11 @@ body.offline .body { opacity: 0.5; pointer-events: none; }
   .options { gap: 0.5rem; }
   .opt { min-height: 3.4rem; padding: 0.6rem 0.9rem; font-size: 1rem; }
 }
+
+/* Code entry (cloud relay, no ?room= in the link) */
+.join { display: grid; gap: 0.8rem; }
+.code-input {
+  width: 100%; padding: 0.5rem; border-radius: 1rem; border: 0.22rem solid #fff; background: #fff; color: var(--wbc-navy);
+  font: inherit; font-size: 2.4rem; font-weight: 900; letter-spacing: 0.35em; text-indent: 0.35em; text-align: center; text-transform: uppercase; user-select: text;
+}
+.code-input:focus { outline: none; border-color: var(--wbc-red); }

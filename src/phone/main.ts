@@ -1,6 +1,7 @@
 import { ROUND_SECONDS } from '../config';
 import type { LessonLine } from '../game/lesson';
 import type { Side } from '../game/types';
+import { CODE_LENGTH, normalizeCode, RELAY, relayUrl } from '../net/hub';
 import type { PhoneMsg, PhoneView } from '../net/teams-protocol';
 import './phone.css';
 
@@ -24,6 +25,8 @@ const token =
     return t;
   })();
 
+// The cloud relay needs the room code from the QR link (?room=) or typed in. The booth server is a single room.
+let room = normalizeCode(new URLSearchParams(location.search).get('room') ?? '');
 let ws: WebSocket | null = null;
 let view: PhoneView | null = null;
 let attempts = 0;
@@ -34,13 +37,13 @@ function send(msg: PhoneMsg): void {
 }
 
 function connect(): void {
-  const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  const socket = new WebSocket(relayUrl(room));
   ws = socket;
   socket.onopen = () => {
     attempts = 0;
     socket.send(JSON.stringify({ role: 'phone' }));
     setOffline(false);
-    if (!view) status('Looking for the big screen…');
+    if (!view) status(RELAY ? `Looking for game ${room}… If nothing happens, check the code on the big screen.` : 'Looking for the big screen…');
   };
   socket.onmessage = (e) => {
     let next: PhoneView;
@@ -118,8 +121,8 @@ function pickSide(taken: Side[]): void {
     `<button class="side ${side}" data-side="${side}" ${taken.includes(side) ? 'disabled' : ''}><b>${NAMES[side]}</b><small>${taken.includes(side) ? 'Taken' : sub}</small></button>`;
   draw(
     undefined,
-    `<h1>Team Battle</h1>
-     <p class="message">Pick your team. One phone per team.</p>
+    `<h1>Pick your side</h1>
+     <p class="message">One phone per team or player.</p>
      ${button('ranger', 'Defend the watering hole')}
      ${button('predator', 'Raid it')}`,
   );
@@ -230,5 +233,33 @@ function voteButton(mine: boolean, theirs: boolean, label: string): string {
   return `<button class="vote">${label}</button>${theirs ? '<p class="message small">The other team is ready.</p>' : ''}`;
 }
 
-status('Connecting…');
-connect();
+/** Asks for the code shown on the big screen, then connects. */
+function enterCode(): void {
+  draw(
+    undefined,
+    `<h1>Join a game</h1>
+     <p class="message">Enter the code on the big screen.</p>
+     <form class="join">
+       <input class="code-input" maxlength="${CODE_LENGTH}" placeholder="CODE" autocomplete="off" autocapitalize="characters"
+         spellcheck="false" enterkeyhint="go" aria-label="Game code">
+       <button class="side ranger" type="submit"><b>Join</b></button>
+     </form>`,
+  );
+  const input = app.querySelector<HTMLInputElement>('.code-input')!;
+  input.oninput = () => (input.value = normalizeCode(input.value));
+  input.focus();
+  app.querySelector<HTMLFormElement>('form.join')!.onsubmit = (e) => {
+    e.preventDefault();
+    if (input.value.length !== CODE_LENGTH) return input.focus();
+    room = input.value;
+    history.replaceState(null, '', `?room=${room}`);
+    status('Connecting…');
+    connect();
+  };
+}
+
+if (RELAY && room.length !== CODE_LENGTH) enterCode();
+else {
+  status('Connecting…');
+  connect();
+}

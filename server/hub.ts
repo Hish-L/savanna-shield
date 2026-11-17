@@ -17,7 +17,8 @@ export function attachHub(server: Server): void {
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BYTES });
   // Only claim /ws so other upgrade handlers (Vite's HMR socket in dev) keep working.
   server.on('upgrade', (req, socket, head) => {
-    if (req.url !== '/ws') return;
+    // The room query is ignored: the booth server is a single room.
+    if (!req.url?.startsWith('/ws')) return;
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
   });
   let screen: WebSocket | undefined;
