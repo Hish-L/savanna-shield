@@ -1,6 +1,6 @@
 import { LOGO_SVG } from '../brand';
-import { DEFENDER_TITLE, ROUND_SECONDS } from '../config';
-import { QUESTIONS_PER_GAME } from '../scenarios';
+import { DEFAULTS, DEFENDER_TITLE, resetSettings, saveSettings, settings, type Settings } from '../config';
+import { questionPool } from '../scenarios';
 import { lessonFor, type LessonLine } from '../game/lesson';
 import { bestOption, type RoundResult } from '../game/scoring';
 import type { Mode, Option, Round, Scenario, Side } from '../game/types';
@@ -31,6 +31,16 @@ export const isHuman = (mode: Mode, side: Side) => mode === 'duel' || mode === `
 /** The one side this device plays, or null when both sides show on this screen. */
 export const localSide = (mode: Mode): Side | null => (mode === 'duel' || mode === 'teams' ? null : isHuman(mode, 'ranger') ? 'ranger' : 'predator');
 
+/** Settings screen fields, in display order. Native min/max/step do the validation. */
+const SETTING_FIELDS: { key: keyof Settings; label: string; min: number; max: number; step?: number }[] = [
+  { key: 'questionsPerGame', label: 'Questions per game', min: 1, max: questionPool.length },
+  { key: 'roundSeconds', label: 'Answer time (seconds)', min: 5, max: 120 },
+  { key: 'readingWordsPerSecond', label: 'Reading pace (words per second)', min: 0.5, max: 10, step: 0.5 },
+  { key: 'readingBufferSeconds', label: 'Extra reading time (seconds)', min: 0, max: 30 },
+  { key: 'briefingSeconds', label: 'Briefing screen (seconds)', min: 1, max: 30 },
+  { key: 'autoContinueSeconds', label: 'Auto-continue after reveal (seconds, 0 = wait for Space)', min: 0, max: 120 },
+];
+
 /** Team Battle lobby slot state. */
 export type SlotState = 'open' | 'joined' | 'away';
 
@@ -54,7 +64,7 @@ export class UI {
     return `<img class="avatar ${variant}" src="${this.portraits[who]}" alt="">`;
   }
 
-  title(): Promise<Mode> {
+  title(): Promise<Mode | 'settings'> {
     const modes: { mode: Mode; key: string; label: string; sub: string }[] = [
       { mode: 'duel', key: '1', label: 'Ranger vs Predator', sub: '2 players, head to head' },
       { mode: 'solo-ranger', key: '2', label: 'Play the Ranger', sub: 'Defend against the computer' },
@@ -65,22 +75,74 @@ export class UI {
       <div class="screen title">
         ${BRAND}
         <h1>Savannah <span>Shield</span></h1>
-        <p class="tagline">Defend the watering hole, or raid it. ${QUESTIONS_PER_GAME} security calls, ${ROUND_SECONDS} seconds to answer each.</p>
+        <p class="tagline">Defend the watering hole, or raid it. ${settings.questionsPerGame} security calls, ${settings.roundSeconds} seconds to answer each.</p>
         <div class="modes">
           ${modes.map((m) => `<button class="mode" data-mode="${m.mode}"><kbd>${m.key}</kbd><b>${m.label}</b><small>${m.sub}</small></button>`).join('')}
         </div>
+        <button class="link-button open-settings"><kbd>5</kbd> ⚙ Settings</button>
       </div>`;
     return new Promise((resolve) => {
-      const done = (mode: Mode) => {
+      const done = (mode: Mode | 'settings') => {
         window.removeEventListener('keydown', onKey);
         resolve(mode);
       };
       const onKey = (e: KeyboardEvent) => {
         const m = modes.find((x) => x.key === e.key);
         if (m) done(m.mode);
+        else if (e.key === '5') done('settings');
       };
       window.addEventListener('keydown', onKey);
       this.root.querySelectorAll<HTMLButtonElement>('button.mode').forEach((b) => (b.onclick = () => done(b.dataset.mode as Mode)));
+      this.root.querySelector<HTMLButtonElement>('.open-settings')!.onclick = () => done('settings');
+    });
+  }
+
+  /** The game settings form. Resolves when the operator saves or goes back. */
+  settings(): Promise<void> {
+    const field = (f: (typeof SETTING_FIELDS)[number]) =>
+      `<label><span>${f.label}</span><small>Default ${DEFAULTS[f.key]}</small>
+        <input type="number" name="${f.key}" value="${settings[f.key]}" min="${f.min}" max="${f.max}" step="${f.step ?? 1}" required></label>`;
+    this.root.innerHTML = `
+      <div class="screen settings">
+        ${BRAND}
+        <h2>Settings</h2>
+        <form class="settings-form">
+          ${SETTING_FIELDS.map(field).join('')}
+          <div class="settings-actions">
+            <button type="submit" class="mode"><b>Save</b></button>
+            <button type="button" class="link-button reset">Reset to defaults</button>
+            <button type="button" class="link-button back"><kbd>Esc</kbd> Back</button>
+          </div>
+          <p class="saved" hidden></p>
+        </form>
+      </div>`;
+    const form = this.root.querySelector<HTMLFormElement>('form')!;
+    const input = (key: keyof Settings) => form.elements.namedItem(key) as HTMLInputElement;
+    const flash = (text: string) => {
+      const saved = form.querySelector<HTMLElement>('.saved')!;
+      saved.textContent = text;
+      saved.hidden = false;
+    };
+    return new Promise((resolve) => {
+      const done = () => {
+        window.removeEventListener('keydown', onKey);
+        resolve();
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') done();
+      };
+      window.addEventListener('keydown', onKey);
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        saveSettings(Object.fromEntries(SETTING_FIELDS.map((f) => [f.key, input(f.key).valueAsNumber])) as Settings);
+        done();
+      };
+      form.querySelector<HTMLButtonElement>('.reset')!.onclick = () => {
+        resetSettings();
+        for (const f of SETTING_FIELDS) input(f.key).value = String(DEFAULTS[f.key]);
+        flash('Defaults restored.');
+      };
+      form.querySelector<HTMLButtonElement>('.back')!.onclick = done;
     });
   }
 
@@ -192,8 +254,15 @@ export class UI {
    */
   continueAfterReveal(signal?: AbortSignal): Promise<void> {
     const banner = this.root.querySelector('.banner')!;
-    banner.insertAdjacentHTML('beforeend', `<button class="link-button next"><kbd>Space</kbd> Continue</button>`);
-    return this.onSpace(banner.querySelector('.next')!, signal);
+    const auto = settings.autoContinueSeconds;
+    banner.insertAdjacentHTML('beforeend', `<button class="link-button next"><kbd>Space</kbd> Continue${auto ? ` · auto in ${auto}s` : ''}</button>`);
+    const next = banner.querySelector('.next')!;
+    if (auto) {
+      // Acts like a tap on Continue; harmless if Space or a tap got there first.
+      const timer = setTimeout(() => next.dispatchEvent(new Event('pointerdown')), auto * 1000);
+      signal?.addEventListener('abort', () => clearTimeout(timer), { once: true });
+    }
+    return this.onSpace(next, signal);
   }
 
   /** Team Battle: shows which teams have tapped Next on their phones. */

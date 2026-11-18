@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { QUESTIONS_PER_GAME, buildScenario, dealQuestions, questionPool } from './index';
+import { settings } from '../config';
+import { buildScenario, dealQuestions, questionPool } from './index';
 
 // Booth rules: players get a few seconds per question, so text must stay readable at a glance
 // and every question needs one clear best answer per side.
@@ -27,12 +28,12 @@ describe('question pool', () => {
 });
 
 describe('dealing', () => {
-  it(`deals ${QUESTIONS_PER_GAME} distinct questions`, () => {
+  it(`deals ${settings.questionsPerGame} distinct questions`, () => {
     for (let i = 0; i < 50; i++) {
       const hand = dealQuestions();
-      expect(hand).toHaveLength(QUESTIONS_PER_GAME);
-      expect(new Set(hand).size).toBe(QUESTIONS_PER_GAME);
-      expect(buildScenario(hand)?.rounds).toHaveLength(QUESTIONS_PER_GAME);
+      expect(hand).toHaveLength(settings.questionsPerGame);
+      expect(new Set(hand).size).toBe(settings.questionsPerGame);
+      expect(buildScenario(hand)?.rounds).toHaveLength(settings.questionsPerGame);
     }
   });
 

@@ -1,4 +1,4 @@
-import { BRIEFING_SECONDS, ROUND_SECONDS } from '../config';
+import { settings } from '../config';
 import { buildScenario, dealQuestions } from '../scenarios';
 import type { Savanna } from '../scene/world';
 import { KEYS, isHuman, localSide, type Played, type Totals, type UI } from '../ui/ui';
@@ -52,7 +52,7 @@ export function runTimer(ui: UI, readSeconds: number): () => void {
   let frame = 0;
   const tick = () => {
     const elapsed = (performance.now() - start) / 1000;
-    ui.timer(Math.min(1, 1 - (elapsed - readSeconds) / ROUND_SECONDS), Math.max(0, readSeconds - elapsed));
+    ui.timer(Math.min(1, 1 - (elapsed - readSeconds) / settings.roundSeconds), Math.max(0, readSeconds - elapsed));
     frame = requestAnimationFrame(tick);
   };
   tick();
@@ -94,7 +94,7 @@ export function collectPicks(
       onLock?.(side, index);
       if (picks.ranger && picks.predator) finish();
     };
-    const timer = window.setTimeout(finish, (readSeconds + ROUND_SECONDS) * 1000);
+    const timer = window.setTimeout(finish, (readSeconds + settings.roundSeconds) * 1000);
     cleanups = [...wire(choose, finish), runTimer(ui, readSeconds), () => clearTimeout(timer)];
   });
 }
@@ -132,14 +132,14 @@ export function dealScenario(): { scenario: Scenario } {
 export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void {
   world.newGame(scenario.predator.animal);
   world.setAttract(false);
-  ui.briefing(scenario, mode, BRIEFING_SECONDS);
+  ui.briefing(scenario, mode, settings.briefingSeconds);
 }
 
 /** Runs a full game on this device. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI): Promise<void> {
   const { scenario } = dealScenario();
   startGame(scenario, mode, world, ui);
-  await sleep(BRIEFING_SECONDS);
+  await sleep(settings.briefingSeconds);
 
   const totals: Totals = { ranger: 0, predator: 0 };
   const played: Played[] = [];

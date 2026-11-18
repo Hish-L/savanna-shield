@@ -1,7 +1,7 @@
 import type { Option, Round } from '../game/types';
 
 // The question pool, from the facilitator answer key ("Cyber security game scenarios").
-// Each game deals QUESTIONS_PER_GAME of these at random.
+// Each game deals settings.questionsPerGame of these at random.
 //
 // Scores follow the answer key: Ranger options are +2..+4 (+4 is the strongest defender action).
 // Predator options are stored as the size of the answer key's −2..−4 (4 is the highest-impact move),

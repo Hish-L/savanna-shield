@@ -1,5 +1,5 @@
 import QRCode from 'qrcode';
-import { BRIEFING_SECONDS, ROUND_SECONDS } from '../config';
+import { settings } from '../config';
 import { HubClient, newCode, NO_HUB, RELAY } from '../net/hub';
 import { parsePhoneMsg, type HubEvent, type Outcome, type PhoneMsg, type PhoneView } from '../net/teams-protocol';
 import type { Savanna } from '../scene/world';
@@ -139,7 +139,7 @@ class TeamBattle {
     this.phase = { kind: 'briefing' };
     this.refreshAll();
     startGame(scenario, 'teams', this.world, this.ui);
-    await sleep(BRIEFING_SECONDS, signal);
+    await sleep(settings.briefingSeconds, signal);
 
     const totals: Totals = { ranger: 0, predator: 0 };
     const played: Played[] = [];
@@ -148,7 +148,7 @@ class TeamBattle {
       const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
       this.ui.round(scenario, round, index, options, 'teams', totals);
       const readSeconds = readingSeconds(round);
-      const question = { kind: 'question' as const, scenario, round, index, options, deadline: performance.now() + (readSeconds + ROUND_SECONDS) * 1000, locked: {} as Partial<Record<Side, number>> };
+      const question = { kind: 'question' as const, scenario, round, index, options, deadline: performance.now() + (readSeconds + settings.roundSeconds) * 1000, locked: {} as Partial<Record<Side, number>> };
       this.phase = question;
       this.showSeats();
       this.refreshAll();
@@ -319,6 +319,7 @@ class TeamBattle {
           prompt: p.round[side].prompt,
           options: p.options[side].map((o) => o.text),
           endsInMs: Math.max(0, p.deadline - performance.now()),
+          answerMs: settings.roundSeconds * 1000,
           locked: p.locked[side] ?? null,
         };
       case 'result':

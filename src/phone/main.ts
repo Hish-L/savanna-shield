@@ -1,4 +1,3 @@
-import { ROUND_SECONDS } from '../config';
 import type { LessonLine } from '../game/lesson';
 import type { Side } from '../game/types';
 import { CODE_LENGTH, normalizeCode, RELAY, relayUrl } from '../net/hub';
@@ -11,7 +10,6 @@ import './phone.css';
 const app = document.getElementById('app')!;
 const NAMES: Record<Side, string> = { ranger: 'Ranger', predator: 'Predator' };
 const LETTERS = ['A', 'B', 'C'];
-const ROUND_MS = ROUND_SECONDS * 1000;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&${{ '&': 'amp', '<': 'lt', '>': 'gt', '"': 'quot' }[c]};`);
 
 // Per tab, so a refresh reclaims the seat but two tabs on one laptop can test both sides.
@@ -168,15 +166,16 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   const fill = app.querySelector<HTMLElement>('.timer .fill')!;
   const hint = app.querySelector<HTMLElement>('.read-hint')!;
   const end = performance.now() + q.endsInMs;
+  const answerMs = q.answerMs;
   const tick = () => {
     const left = Math.max(0, end - performance.now());
     // Time beyond the answer window is reading time: the bar stays full with a countdown to the start.
-    const fraction = Math.min(1, left / ROUND_MS);
+    const fraction = Math.min(1, left / answerMs);
     fill.style.transform = `scaleX(${fraction})`;
     fill.classList.toggle('urgent', fraction < 0.35);
-    const reading = left > ROUND_MS;
+    const reading = left > answerMs;
     hint.hidden = !reading;
-    if (reading) hint.textContent = `Timer starts in ${Math.ceil((left - ROUND_MS) / 1000)}s`;
+    if (reading) hint.textContent = `Timer starts in ${Math.ceil((left - answerMs) / 1000)}s`;
     if (left > 0) frame = requestAnimationFrame(tick);
     else if (!app.querySelector('.options.locked')) {
       buttons.forEach((x) => (x.disabled = true));

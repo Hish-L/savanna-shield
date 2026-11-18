@@ -1,9 +1,8 @@
 import type { Scenario } from '../game/types';
+import { settings } from '../config';
 import { questionPool } from './pool';
 
 export { questionPool };
-
-export const QUESTIONS_PER_GAME = 5;
 
 // One scenario frame; each game deals a random hand of questions from the pool into it.
 const releaseWeek: Omit<Scenario, 'rounds'> = {
@@ -20,7 +19,7 @@ export function dealQuestions(random = Math.random): number[] {
     const j = Math.floor(random() * (i + 1));
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
-  return indices.slice(0, QUESTIONS_PER_GAME);
+  return indices.slice(0, settings.questionsPerGame);
 }
 
 /** The scenario for a dealt hand, or null if an index isn't in this build's pool (version mismatch online). */

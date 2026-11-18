@@ -33,6 +33,8 @@ export type PhoneView =
       options: string[];
       /** Remaining time rather than a timestamp, so phone clocks don't matter. Anything over the answer time is reading time. */
       endsInMs: number;
+      /** Length of the answer window (a game setting on the big screen). */
+      answerMs: number;
       locked: number | null;
     }
   | {
