@@ -54,6 +54,9 @@ export class Savanna {
   /** Reveal close-up: what the camera zooms to and when it pulls back out. */
   private shot: { target: () => THREE.Vector3; until: number } | null = null;
   private zoom = 0;
+  /** Main menu: the view slides so the waterhole sits beside the menu (0 = centred, 1 = fully shifted). */
+  private menu = false;
+  private menuShift = 0;
   private readonly timer = new THREE.Timer();
 
   constructor(container: HTMLElement) {
@@ -113,6 +116,10 @@ export class Savanna {
 
   setAttract(attract: boolean): void {
     this.attract = attract;
+  }
+
+  setMenu(menu: boolean): void {
+    this.menu = menu;
   }
 
   /** Lead = predator total − ranger total. */
@@ -225,6 +232,12 @@ export class Savanna {
     const jolt = this.shake * 0.6;
     this.camera.position.copy(position).add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(jolt));
     this.camera.lookAt(look);
+    // Menu: wide screens push the waterhole right of the menu column, tall ones push it up above the menu.
+    this.menuShift = damp(this.menuShift, this.menu ? 1 : 0, 2.5, dt);
+    const { innerWidth: w, innerHeight: h } = window;
+    if (this.menuShift < 0.001) this.camera.clearViewOffset();
+    else if (w > h) this.camera.setViewOffset(w, h, -w * 0.2 * this.menuShift, 0, w, h);
+    else this.camera.setViewOffset(w, h, 0, h * 0.3 * this.menuShift, w, h);
 
     this.waterhole.update(dt, this.timer.getElapsed(), this.camera.position);
     for (const at of this.fence.update(dt, this.pack.positions())) {

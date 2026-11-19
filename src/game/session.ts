@@ -67,7 +67,8 @@ export type PickWiring = (choose: (side: Side, index: number) => void, end: () =
 
 /**
  * Resolves when both sides have locked in or the round timer runs out (missing picks are null).
- * Picks are accepted during the `readSeconds` reading time too; the answer timer starts after it.
+ * The answer timer starts after the `readSeconds` reading time. Picks are accepted during reading
+ * too; each wiring decides whether to allow them (local play blocks them, as the answers are hidden).
  */
 export function collectPicks(
   options: Record<Side, Option[]>,
@@ -100,12 +101,13 @@ export function collectPicks(
 }
 
 /** Inputs for keyboard/tap and the AI. */
-function localWiring(options: Record<Side, Option[]>, mode: Mode, ui: UI): PickWiring {
+function localWiring(options: Record<Side, Option[]>, mode: Mode, ui: UI, readSeconds: number): PickWiring {
   return (choose) => {
-    const cleanups = [listenForInput(mode, ui, choose)];
+    const answersAt = performance.now() + readSeconds * 1000;
+    const cleanups = [listenForInput(mode, ui, (side, index) => performance.now() >= answersAt && choose(side, index))];
     for (const side of SIDES) {
       if (isHuman(mode, side)) continue;
-      const timer = window.setTimeout(() => choose(side, options[side].indexOf(aiPick(options[side]))), aiDelay() * 1000);
+      const timer = window.setTimeout(() => choose(side, options[side].indexOf(aiPick(options[side]))), (readSeconds + aiDelay()) * 1000);
       cleanups.push(() => clearTimeout(timer));
     }
     return cleanups;
@@ -147,7 +149,8 @@ export async function playSession(mode: Mode, world: Savanna, ui: UI): Promise<v
     const order = { ranger: shuffle([...round.ranger.options.keys()]), predator: shuffle([...round.predator.options.keys()]) };
     const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
     ui.round(scenario, round, index, options, mode, totals);
-    const picks = await collectPicks(options, readingSeconds(round), ui, localWiring(options, mode, ui));
+    const readSeconds = readingSeconds(round);
+    const picks = await collectPicks(options, readSeconds, ui, localWiring(options, mode, ui, readSeconds));
     applyResult(world, ui, round, picks, totals, played);
     await ui.continueAfterReveal();
   }

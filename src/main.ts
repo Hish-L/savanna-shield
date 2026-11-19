@@ -13,7 +13,9 @@ const ui = new UI(document.getElementById('ui')!, renderPortraits());
 
 // Booth loop: title → game → debrief → title, forever.
 for (;;) {
+  world.setMenu(true);
   const mode = await ui.title();
+  world.setMenu(false);
   if (mode === 'settings') await ui.settings();
   else if (mode === 'teams') await playTeams(world, ui);
   else await playSession(mode, world, ui);

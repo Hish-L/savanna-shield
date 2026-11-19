@@ -13,7 +13,7 @@
   --accent: #fff;
   --on-accent: var(--wbc-navy-deep);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: clamp(15px, 4.4vw, 22px);
+  font-size: clamp(15px, 4.4vmin, 22px); /* vmin: turning the phone sideways must not grow the text */
   color: var(--wbc-light);
   -webkit-tap-highlight-color: transparent;
 }
@@ -126,7 +126,7 @@ body.offline .body { opacity: 0.5; pointer-events: none; }
 
 /* Short phones (iPhone SE, 667px): tighten so a worst-case question and all 3 answers fit without scrolling. */
 @media (max-height: 700px) {
-  :root { font-size: clamp(14px, 3.9vw, 22px); }
+  :root { font-size: clamp(14px, 3.9vmin, 22px); }
   header { margin-bottom: 0.6rem; }
   .body { gap: 0.6rem; }
   .situation { padding: 0.7rem 0.9rem; font-size: 0.95rem; }

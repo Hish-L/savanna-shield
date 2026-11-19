@@ -174,7 +174,6 @@ export class UI {
         <div class="status-chip">${side === 'ranger' ? 'Defending' : 'Attacking'}\u2026</div>
         <div class="who">${this.avatar(who)}<div><b>${esc(name)}</b><small>${esc(sub)}</small></div><div class="pts">${totals[side]}</div></div>
         <div class="timer"><div class="fill"></div></div>
-        <p class="read-hint" hidden></p>
         <p class="prompt">${esc(round[side].prompt)}</p>
         ${options[side]
           .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : mode === 'teams' ? 'ABC'[i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
@@ -182,10 +181,11 @@ export class UI {
         <div class="lock">${isHuman(mode, side) ? 'Locked in' : mode === 'teams' ? 'Team is choosing…' : 'Computer is thinking…'}</div>
       </section>`;
     this.root.innerHTML = `
-      <div class="hud ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
+      <div class="hud reading ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
           <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
+          <p class="read-hint" hidden></p>
         </header>
         ${card('ranger', 'ranger', 'Chief Ranger', DEFENDER_TITLE)}
         ${card('predator', p.animal, p.name, p.role)}
@@ -201,8 +201,9 @@ export class UI {
       fill.style.transform = `scaleX(${Math.max(0, fraction)})`;
       fill.classList.toggle('urgent', fraction < 0.35);
     });
+    this.root.querySelector('.hud')?.classList.toggle('reading', readingLeft > 0);
     const text = readingLeft > 0 ? `Timer starts in ${Math.ceil(readingLeft)}s` : '';
-    this.root.querySelectorAll<HTMLElement>('.card .read-hint').forEach((hint) => {
+    this.root.querySelectorAll<HTMLElement>('.topbar .read-hint').forEach((hint) => {
       if (hint.textContent !== text) hint.textContent = text;
       hint.hidden = !text;
     });

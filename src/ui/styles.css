@@ -47,13 +47,13 @@ kbd {
 
 /* ---------- full-screen overlays ---------- */
 .screen {
-  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* safe center + scroll: a screen too short for its content scrolls instead of clipping both ends. */
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto;
   gap: 1.2rem; padding: 2rem 3rem; text-align: center;
   background: radial-gradient(ellipse at center, rgba(31, 28, 79, 0.3), rgba(17, 15, 51, 0.88));
   animation: fade-in 0.4s ease;
 }
 .screen > .brand { font-size: 1rem; }
-.title > .brand { font-size: 1.6rem; }
 .screen h1 {
   margin: 0; font-size: min(6.5rem, 16vw); font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; line-height: 0.95;
   color: #fff; -webkit-text-stroke: 0.035em var(--wbc-navy); paint-order: stroke fill;
@@ -67,7 +67,31 @@ kbd {
 .tagline, .role { margin: 0; font-size: 1.5rem; font-weight: 600; }
 .eyebrow { text-transform: uppercase; letter-spacing: 0.3em; color: var(--predator); font-weight: 900; }
 
-.modes { display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem; }
+/* Main menu: a column on the left like a console game, with the waterhole live on the right
+   (the world shifts its view to make room). */
+.screen.title {
+  align-items: flex-start; text-align: left; gap: 1rem;
+  padding: max(2rem, env(safe-area-inset-top)) 2rem max(2rem, env(safe-area-inset-bottom)) max(3.5rem, env(safe-area-inset-left));
+  background: linear-gradient(90deg, rgba(17, 15, 51, 0.92) 0%, rgba(17, 15, 51, 0.7) 32%, transparent 55%);
+}
+.title > .brand { font-size: 1.1rem; }
+.title h1 { font-size: min(5.5rem, 10vh); }
+.title h1 span { display: block; }
+.title .tagline { max-width: 30rem; font-size: 1.25rem; }
+.modes { display: grid; gap: 0.7rem; width: 28rem; max-width: 100%; margin-top: 0.2rem; }
+/* Menu buttons are compact rows: key | label over subtitle. */
+.modes .mode { width: 100%; grid-template-columns: auto 1fr; justify-items: start; align-items: center; column-gap: 0.9rem; row-gap: 0.1rem; padding: 0.6rem 1.1rem; text-align: left; }
+.modes .mode kbd { grid-row: span 2; }
+.modes .mode b { font-size: 1.3rem; }
+.modes .mode:hover { transform: translateX(0.5rem); }
+/* Phones on their side: drop the extras and put the buttons two across so it all fits. */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) {
+  .screen.title { gap: 0.6rem; padding-top: max(1rem, env(safe-area-inset-top)); padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .title .tagline, .modes .mode small { display: none; }
+  .title h1 { font-size: 13vh; }
+  .modes { grid-template-columns: 1fr 1fr; width: 34rem; }
+  .modes .mode kbd { grid-row: auto; }
+}
 .mode {
   display: grid; gap: 0.3rem; justify-items: center; width: 19rem; padding: 1.2rem 1rem 1.3rem;
   background: #fff; color: var(--wbc-navy); border: 0.22rem solid var(--wbc-navy); border-radius: 1.2rem;
@@ -93,9 +117,10 @@ kbd {
 
 /* ---------- in-game HUD ---------- */
 .hud { position: absolute; inset: 0; }
-/* The question: a solid sticker panel so it reads clearly over the savanna. Its width leaves room for the cards either side. */
+/* The question: a solid sticker panel so it reads clearly over the savanna. Its width leaves room for the cards either side
+   (2 × 29.5rem plus a gap); at 16:9 that is ~25rem, so the minimum stays below it. */
 .topbar {
-  position: absolute; top: 1.2rem; left: 50%; transform: translateX(-50%); width: min(46rem, calc(100vw - 62rem)); min-width: 30rem; text-align: center;
+  position: absolute; top: 1.2rem; left: 50%; transform: translateX(-50%); width: min(46rem, calc(100vw - 62rem)); min-width: 24rem; text-align: center;
   padding: 1.5rem 1.6rem 1.3rem; border-radius: 1.4rem; background: #fff; color: var(--wbc-navy-deep);
   border: 0.3rem solid var(--wbc-red); box-shadow: var(--sticker);
 }
@@ -119,7 +144,10 @@ kbd {
 .timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
 .timer .fill.urgent { background: var(--wbc-red); }
 .read-hint { margin: -0.3rem 0 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; }
-.read-hint[hidden], .card.revealed .read-hint { display: none; }
+.read-hint[hidden] { display: none; }
+.topbar .read-hint { margin: 0.9rem 0 0; font-size: 1.1rem; color: var(--wbc-red); opacity: 1; }
+/* While the question is read the answers stay hidden; visibility keeps their space so nothing jumps. */
+.hud.reading .card { visibility: hidden; }
 
 .card {
   position: absolute; top: 50%; transform: translateY(-50%); width: 28rem;
@@ -137,7 +165,7 @@ kbd {
 .who { display: flex; align-items: center; gap: 0.7rem; }
 .who .avatar { width: 4.5rem; height: 4.5rem; border-width: 0.18rem; }
 .who b { display: block; font-size: 1.35rem; font-weight: 900; }
-.who small { opacity: 0.8; font-weight: 600; }
+.who small { display: block; margin-top: 0.15rem; font-size: 1.15rem; opacity: 0.8; font-weight: 600; }
 .who .pts {
   margin-left: auto; min-width: 3.6rem; padding: 0.1rem 0.6rem; border-radius: 0.8rem; text-align: center;
   font-size: 2rem; font-weight: 900; background: var(--accent); color: var(--on-accent); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
@@ -185,19 +213,17 @@ kbd {
 }
 .card:is(.locked, .revealed) .status-chip { display: none; }
 
-/* Reveal: cards shrink to a compact strip at the top showing just the pick and points. */
-.card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), width 0.3s, padding 0.3s; }
-.card.revealed { top: 1.2rem; transform: none; width: 22rem; gap: 0.5rem; padding: 0.7rem 0.9rem; }
-.card.revealed .who .avatar { width: 2.6rem; height: 2.6rem; }
-.card.revealed .who b { font-size: 1.05rem; }
-.card.revealed .who small { font-size: 0.8rem; }
-.card.revealed .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
+/* Reveal: cards keep their width but move to the top and collapse to the pick, the best answer and points. */
+.card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1); }
+.card.revealed { top: 1.2rem; transform: none; gap: 0.7rem; }
 .card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen, .best) { display: none; }
-.card.revealed .opt:is(.chosen, .best) { padding: 0.45rem 0.7rem; font-size: 1rem; }
+.card.revealed .opt:is(.chosen, .best) { padding: 0.75rem 0.9rem; font-size: 1.2rem; line-height: 1.25; }
+.card.revealed .opt:is(.chosen, .best) em { font-size: 1.5rem; }
+.card.revealed .timeout { font-size: 1.2rem; }
 /* The pick comes first, then the best answer under it when they differ. */
 .card.revealed .opt.best:not(.chosen) { order: 1; margin-top: 0.8rem; }
 /* The chip hangs ~0.8rem into the answer, so push the text down below it. */
-.card.revealed .opt.best { padding-top: 1.15rem; }
+.card.revealed .opt.best { padding-top: 1.3rem; }
 .hud > .brand { transition: opacity 0.2s; }
 .revealing > .brand { opacity: 0; }
 
@@ -259,24 +285,32 @@ kbd {
 @keyframes shake-x { 25% { transform: translateX(-0.4rem); } 75% { transform: translateX(0.4rem); } }
 @keyframes shake { 25% { transform: translate(-52%, 0); } 75% { transform: translate(-48%, 0); } }
 
-/* Portrait / small screens: stack the cards. */
+/* Portrait: the menu becomes a sheet along the bottom (phones on their side keep the column above). */
 @media (max-aspect-ratio: 1/1) {
   :root { font-size: max(12px, 2.2vw); }
-  .title > .brand { font-size: 1.1rem; }
   .screen h1 { font-size: 13vw; }
+  /* Menu: the waterhole shows up top (the world shifts it up), the menu sits along the bottom. */
+  .screen.title {
+    justify-content: safe flex-end; align-items: center; text-align: center;
+    padding: max(1.2rem, env(safe-area-inset-top)) 1.2rem max(1.5rem, env(safe-area-inset-bottom));
+    background: linear-gradient(0deg, rgba(17, 15, 51, 0.95) 35%, rgba(17, 15, 51, 0.55) 60%, transparent 80%);
+  }
+  .title > .brand { font-size: 0.8rem; }
+  .title h1 { font-size: min(11vw, 6.5vh); }
+  .title .tagline { font-size: 1rem; }
+  .modes { width: min(100%, 26rem); margin-top: 0.4rem; }
+}
+
+/* Portrait, and phones on their side (too short for side-by-side cards): stack the cards. */
+@media (max-aspect-ratio: 1/1), (max-height: 500px) {
   .screen h2 { font-size: 2.6rem; }
   .tagline, .role { font-size: 1.15rem; }
   .brief { font-size: 1.3rem; }
-  .modes { gap: 0.7rem; width: min(100%, 26rem); margin-top: 0.4rem; }
-  /* Menu buttons become compact rows: key | label over subtitle. */
-  .modes .mode { width: 100%; grid-template-columns: auto 1fr; justify-items: start; align-items: center; column-gap: 0.8rem; row-gap: 0.1rem; padding: 0.7rem 1rem; text-align: left; }
-  .modes .mode kbd { grid-row: span 2; }
-  .modes .mode b { font-size: 1.2rem; }
   /* In game, the question and cards stack in normal flow, so they can never overlap whatever the
      screen height; the HUD scrolls if a screen is too short for everything. */
   .hud {
     display: flex; flex-direction: column; gap: 1.1rem; overflow-y: auto;
-    padding: max(2vw, env(safe-area-inset-top)) 2vw max(2vw, env(safe-area-inset-bottom));
+    padding: max(2vw, env(safe-area-inset-top)) max(2vw, env(safe-area-inset-right)) max(2vw, env(safe-area-inset-bottom)) max(2vw, env(safe-area-inset-left));
   }
   .hud > :is(.topbar, .card) { position: relative; inset: auto; transform: none; width: auto; min-width: 0; flex-shrink: 0; }
   /* The topbar's question pill hangs above it. */
@@ -302,6 +336,7 @@ kbd {
   .card.revealed .opt:is(.chosen, .best) span { line-height: 1.2; }
   .card.revealed .opt.chosen em { font-size: 1.1rem; }
   .card.revealed .opt.best { padding-top: 1rem; }
+  .card.revealed .timeout { font-size: 1rem; }
   /* Room for the best answer row under the pick. */
   .show-best .card.revealed { grid-template-rows: auto auto auto; }
   .revealing .topbar { display: none; }
@@ -314,7 +349,7 @@ kbd {
   .one-player .card.ai:not(.revealed) .who { flex: 1; }
   .one-player .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
   .one-player .card.ai:not(.revealed) .who small, .one-player .card.ai:not(.revealed) .who .pts { display: none; }
-  .one-player .card.ai:not(.revealed) :is(.timer, .read-hint, .prompt, .opt, .status-chip) { display: none; }
+  .one-player .card.ai:not(.revealed) :is(.timer, .prompt, .opt, .status-chip) { display: none; }
   .one-player .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
   .one-player .topbar .stage b { font-size: 1.05rem; }
   .one-player .topbar .detail { font-size: 1rem; }
@@ -338,7 +373,7 @@ kbd {
   .shared .card:not(.revealed) .prompt { margin: 0; font-size: 1.15rem; }
   .prompt { white-space: normal; }
   .shared .card:not(.revealed) .opt { padding: 0.45rem 0.7rem; font-size: 1rem; }
-  .screen { justify-content: safe center; overflow-y: auto; gap: 0.8rem; padding: max(1.2rem, env(safe-area-inset-top)) 1.2rem max(1.2rem, env(safe-area-inset-bottom)); }
+  .screen { gap: 0.8rem; padding: max(1.2rem, env(safe-area-inset-top)) 1.2rem max(1.2rem, env(safe-area-inset-bottom)); }
 
   /* Reveal: the verdict joins the stack under the cards, so full answers (up to 80 chars) wrap. */
   .hud.revealing { gap: 0.6rem; }
@@ -347,6 +382,19 @@ kbd {
   .hud.revealing > .banner { position: static; width: auto; margin-top: auto; flex-shrink: 0; transform: none; }
   .hud.revealing > .banner.breach { animation: shake-x 0.4s; }
   .room-code { font-size: 2.8rem; }
+}
+
+/* Phones on their side: two columns, so the answers fit the short screen. One player gets the question
+   beside their card; two players get one card per column under the question; the reveal puts both side by side. */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) {
+  .hud { display: grid; grid-template-columns: 1fr 1.25fr; grid-auto-flow: row dense; align-content: start; gap: 0.8rem 1rem; }
+  .hud:is(.shared, .revealing) { grid-template-columns: 1fr 1fr; }
+  .hud > * { grid-column: 1 / -1; }
+  .one-player > :is(.topbar, .card.ai:not(.revealed)) { grid-column: 1; align-self: start; }
+  .one-player > .card:not(.ai):not(.revealed) { grid-row: span 2; }
+  .hud.one-player { grid-template-rows: auto 1fr; }
+  .one-player > .card:not(.ai), .shared > .card, .revealing > .card { grid-column: auto; }
+  .shared .card.predator:not(.revealed), .one-player .card:not(.ai):not(.revealed) { margin-top: 0; }
 }
 
 /* ---------- Team Battle (big screen) ---------- */
