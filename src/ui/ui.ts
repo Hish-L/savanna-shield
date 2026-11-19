@@ -301,16 +301,18 @@ export class UI {
         <p class="role">One phone per team, or one each for 2 players anywhere. Answers stay hidden until the reveal.</p>
         <div class="join-row">
           <div class="qr">${qrSvg}</div>
-          <div class="slots">
-            ${slot('ranger', 'Ranger team', 'ranger')}
-            ${slot('predator', 'Predator team', 'hyena')}
+          <div class="join-info">
+            <div class="slots">
+              ${slot('ranger', 'Ranger team', 'ranger')}
+              ${slot('predator', 'Predator team', 'hyena')}
+            </div>
+            ${
+              code
+                ? `<p class="url">Scan, or open ${esc(playUrl.replace(/^https?:\/\//, '').replace(/\?.*/, ''))} and enter</p><div class="room-code">${code}</div>`
+                : `<p class="url">${esc(playUrl.replace(/^https?:\/\//, ''))}</p>`
+            }
           </div>
         </div>
-        ${
-          code
-            ? `<p class="url">Scan, or open ${esc(playUrl.replace(/^https?:\/\//, '').replace(/\?.*/, ''))} and enter</p><div class="room-code">${code}</div>`
-            : `<p class="url">${esc(playUrl.replace(/^https?:\/\//, ''))}</p>`
-        }
         <p class="waiting">${waitingFor.length ? `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
         <button class="link-button back"><kbd>Esc</kbd> Back</button>
       </div>`;

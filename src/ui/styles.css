@@ -383,6 +383,17 @@ kbd {
   .hud.revealing > .banner.breach { animation: shake-x 0.4s; }
   .room-code { font-size: 2.8rem; }
 }
+/* Short screens: drop the intro line and put the two team slots side by side. */
+@media (max-height: 600px) {
+  .screen.team-lobby { gap: 0.5rem; padding-top: max(0.8rem, env(safe-area-inset-top)); padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); }
+  .team-lobby .role { display: none; }
+  .team-lobby h2 { font-size: 1.7rem; }
+  .team-lobby .qr { width: 36vh; }
+  .team-lobby .join-info { flex: none; width: auto; }
+  .team-lobby .slots { grid-auto-flow: column; }
+  .team-lobby .slot { width: auto; padding: 0.6rem 0.9rem; }
+  .team-lobby .room-code { font-size: 2.2rem; }
+}
 
 /* Phones on their side: two columns, so the answers fit the short screen. One player gets the question
    beside their card; two players get one card per column under the question; the reveal puts both side by side. */
@@ -409,8 +420,13 @@ kbd {
 .banner .votes .predator { --accent: var(--predator); }
 .banner .votes .ready { opacity: 1; background: var(--accent); color: var(--wbc-navy-deep); }
 .banner .votes .ranger.ready { color: #fff; }
-.team-lobby .join-row { display: flex; gap: 2rem; align-items: center; }
-.team-lobby .qr { width: 17rem; padding: 0.8rem; border-radius: 1.2rem; background: #fff; box-shadow: var(--sticker); }
+/* The QR code with everything needed to join beside it, so the lobby fits a 16:9 screen without scrolling. */
+.team-lobby .join-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem 2rem; align-items: center; }
+.team-lobby .join-info { display: grid; gap: 0.9rem; justify-items: center; width: 22rem; max-width: 100%; }
+.team-lobby .join-info .url { overflow-wrap: anywhere; }
+.team-lobby { gap: 0.9rem; }
+/* Sized by height too, so short screens (phones on their side) still fit the lobby. */
+.team-lobby .qr { width: min(16rem, 40vh); padding: 0.8rem; border-radius: 1.2rem; background: #fff; box-shadow: var(--sticker); }
 .team-lobby .qr svg { display: block; width: 100%; height: auto; }
 .team-lobby .slots { display: grid; gap: 1rem; }
 .slot {

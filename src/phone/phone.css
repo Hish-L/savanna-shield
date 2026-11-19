@@ -143,3 +143,14 @@ body.offline .body { opacity: 0.5; pointer-events: none; }
   font: inherit; font-size: 2.4rem; font-weight: 900; letter-spacing: 0.35em; text-indent: 0.35em; text-align: center; text-transform: uppercase; user-select: text;
 }
 .code-input:focus { outline: none; border-color: var(--wbc-red); }
+
+/* Each view comes in two halves. Upright they read as one column; on a phone on its side they sit
+   side by side (question | answers, outcome | lesson), so nothing needs scrolling. */
+.col { display: contents; }
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { font-size: clamp(13px, 3.9vmin, 22px); }
+  header { margin-bottom: 0.4rem; }
+  .body { flex-direction: row; align-items: center; gap: 1.2rem; }
+  .col { display: flex; flex: 1; min-width: 0; flex-direction: column; justify-content: center; gap: 0.6rem; }
+  .opt { min-height: 3rem; padding: 0.5rem 0.9rem; }
+}

@@ -119,10 +119,10 @@ function pickSide(taken: Side[]): void {
     `<button class="side ${side}" data-side="${side}" ${taken.includes(side) ? 'disabled' : ''}><b>${NAMES[side]}</b><small>${taken.includes(side) ? 'Taken' : sub}</small></button>`;
   draw(
     undefined,
-    `<h1>Pick your side</h1>
-     <p class="message">One phone per team or player.</p>
-     ${button('ranger', 'Defend the watering hole')}
-     ${button('predator', 'Raid it')}`,
+    `<div class="col"><h1>Pick your side</h1>
+     <p class="message">One phone per team or player.</p></div>
+     <div class="col">${button('ranger', 'Defend the watering hole')}
+     ${button('predator', 'Raid it')}</div>`,
   );
   app.querySelectorAll<HTMLButtonElement>('button.side').forEach(
     (b) =>
@@ -138,17 +138,17 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   const locked = q.locked !== null;
   draw(
     q.side,
-    `<p class="stage">Question ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
+    `<div class="col"><p class="stage">Question ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
      <p class="situation"><b>${esc(q.situation)}</b> ${esc(q.detail)}</p>
      <div class="timer"><div class="fill"></div></div>
-     <p class="read-hint" hidden></p>
-     <h2 class="prompt">${esc(q.prompt)}</h2>
+     <p class="read-hint" hidden></p></div>
+     <div class="col"><h2 class="prompt">${esc(q.prompt)}</h2>
      <div class="options ${locked ? 'locked' : ''}">
        ${q.options
          .map((text, i) => `<button class="opt ${q.locked === i ? 'chosen' : ''}" data-i="${i}" ${locked ? 'disabled' : ''}><kbd>${LETTERS[i]}</kbd><span>${esc(text)}</span></button>`)
          .join('')}
      </div>
-     <p class="note">${locked ? 'Locked in. Waiting for the other team…' : 'Talk it over, then tap your answer.'}</p>`,
+     <p class="note">${locked ? 'Locked in. Waiting for the other team…' : 'Talk it over, then tap your answer.'}</p></div>`,
   );
   const buttons = app.querySelectorAll<HTMLButtonElement>('button.opt');
   buttons.forEach(
@@ -192,16 +192,17 @@ function result(r: Extract<PhoneView, { v: 'result' }>): void {
   const wasBest = r.yourPick === r.best;
   draw(
     r.side,
-    `<h2 class="outcome ${r.outcome}">${headline}</h2>
+    `<div class="col"><h2 class="outcome ${r.outcome}">${headline}</h2>
      <div class="pick ${r.yourPick ? '' : 'missed'}">
        <small>Your answer</small>
        <b>${r.yourPick ? esc(r.yourPick) : '⏱ Too slow'}</b>
        <em>+${r.points}</em>
      </div>
      ${wasBest ? '<p class="best-tag">★ Best answer!</p>' : r.side === 'ranger' ? '' : `<div class="pick best"><small>Best answer</small><b>${esc(r.best)}</b></div>`}
+     </div>
+     <div class="col"><div class="lesson">${line(r.lesson.why)}${line(r.lesson.tip)}</div>
      ${scoreline(r.totals)}
-     <div class="lesson">${line(r.lesson.why)}${line(r.lesson.tip)}</div>
-     ${voteButton(r.youTappedNext, r.otherTappedNext, 'Next round')}`,
+     ${voteButton(r.youTappedNext, r.otherTappedNext, 'Next round')}</div>`,
   );
   app.querySelector<HTMLButtonElement>('button.vote')?.addEventListener('click', (e) => {
     (e.currentTarget as HTMLButtonElement).disabled = true;
