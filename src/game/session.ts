@@ -8,7 +8,6 @@ import { resolveRound, type RoundResult } from './scoring';
 import type { Mode, Option, Round, Scenario, Side } from './types';
 
 const SIDES: Side[] = ['ranger', 'predator'];
-const sleep = (seconds: number) => new Promise((r) => setTimeout(r, seconds * 1000));
 
 export function shuffle<T>(items: T[]): T[] {
   const a = [...items];
@@ -131,17 +130,17 @@ export function dealScenario(): { scenario: Scenario } {
   return { scenario: buildScenario(dealQuestions())! };
 }
 
-export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI): void {
+/** Shows the mission briefing; resolves when the first question should start. */
+export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI, signal?: AbortSignal): Promise<void> {
   world.newGame(scenario.predator.animal);
   world.setAttract(false);
-  ui.briefing(scenario, mode, settings.briefingSeconds);
+  return ui.briefing(scenario, mode, settings.briefingSeconds, signal);
 }
 
 /** Runs a full game on this device. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI): Promise<void> {
   const { scenario } = dealScenario();
-  startGame(scenario, mode, world, ui);
-  await sleep(settings.briefingSeconds);
+  await startGame(scenario, mode, world, ui);
 
   const totals: Totals = { ranger: 0, predator: 0 };
   const played: Played[] = [];

@@ -113,6 +113,23 @@ kbd {
   background: radial-gradient(circle at 50% 30%, #ffffff, #cfe6ff 70%); border: 0.15rem solid var(--accent, #fff);
 }
 .avatar.hero { --accent: var(--predator); width: 9rem; height: 9rem; border-width: 0.3rem; box-shadow: var(--sticker); }
+/* Briefing: each line rises in on its own beat (--d). The banner stays pinned at the top while
+   the lines below grow in and re-centre. */
+.briefing { justify-content: flex-start; }
+.briefing > .missions { margin-top: auto; }
+.briefing > :last-child { margin-bottom: auto; }
+.beat { animation: rise-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--d, 0s) both; }
+.missions { display: flex; gap: 3rem; justify-content: center; }
+.mission { display: flex; flex-direction: column; gap: 0.8rem; align-items: center; width: 34rem; min-width: 0; }
+/* Each team's keys sit centred at the foot of its half, level with the other team's. */
+.mission > .beat:last-child { margin-top: auto; padding-top: 0.4rem; }
+.mission .eyebrow { padding: 0.25rem 1rem; border-radius: 1rem; background: var(--wbc-red); color: #fff; font-size: 1.1rem; border: 0.15rem solid #fff; box-shadow: var(--sticker); }
+.mission > .beat:first-child { display: grid; gap: 0.4rem; justify-items: center; }
+.mission h2 { font-size: clamp(2rem, 3vw, 3rem); }
+/* Both halves hold their final places from the start; the Rangers' half is only drawn shifted to the
+   centre, then glides into place. A transform never moves anything else, so nothing re-centres. */
+.missions.pair > .mission:first-child { animation: to-place 0.8s cubic-bezier(0.6, 0, 0.2, 1) var(--open) both; --from: calc(50% + 1.5rem) 0; }
+.start-prompt { margin: 0; font-size: 1.3rem; font-weight: 800; animation: pulse 1.6s ease-in-out infinite; }
 .countdown { width: 30rem; height: 0.7rem; border-radius: 1rem; background: var(--wbc-red); border: 0.12rem solid #fff; transform-origin: left; animation: shrink linear forwards; }
 
 /* ---------- in-game HUD ---------- */
@@ -277,6 +294,8 @@ kbd {
 .again { margin: 0.5rem 0 0; font-weight: 700; animation: pulse 1.6s infinite; }
 
 @keyframes fade-in { from { opacity: 0; } }
+@keyframes to-place { from { translate: var(--from); } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(1.2rem) scale(0.96); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-50%) scale(0.85); } }
 @keyframes shrink { to { transform: scaleX(0); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
@@ -306,6 +325,10 @@ kbd {
   .screen h2 { font-size: 2.6rem; }
   .tagline, .role { font-size: 1.15rem; }
   .brief { font-size: 1.3rem; }
+  .avatar.hero { width: 5rem; height: 5rem; }
+  .missions { flex-direction: column; gap: 1.2rem; align-items: center; }
+  .mission { width: min(30rem, 90vw); }
+  .missions.pair > .mission:first-child { --from: 0 calc(50% + 0.6rem); }
   /* In game, the question and cards stack in normal flow, so they can never overlap whatever the
      screen height; the HUD scrolls if a screen is too short for everything. */
   .hud {

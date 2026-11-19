@@ -8,7 +8,6 @@ export { questionPool };
 const releaseWeek: Omit<Scenario, 'rounds'> = {
   id: 'release-week',
   title: 'Release Week',
-  briefing: 'Your squad ships a new Westpac Live feature on Friday. The backlog is full and the deadline is real. Security is job zero.',
   predator: { name: 'Hyena Pack', role: 'Opportunistic attackers', animal: 'hyena' },
 };
 

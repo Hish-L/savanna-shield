@@ -34,7 +34,6 @@ export interface Round {
 export interface Scenario {
   id: string;
   title: string;
-  briefing: string;
   predator: { name: string; role: string; animal: Animal };
   rounds: Round[];
 }

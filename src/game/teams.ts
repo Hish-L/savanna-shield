@@ -26,20 +26,6 @@ const ROOM_KEY = 'savannah-shield-room';
 const other = (side: Side): Side => (side === 'ranger' ? 'predator' : 'ranger');
 const outcome = (r: RoundResult): Outcome => (r.blocked ? 'blocked' : r.breached ? 'breach' : 'fizzle');
 
-function sleep(seconds: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal.reason);
-    };
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, seconds * 1000);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 /** What the phones should be showing right now. */
 type Phase =
   | { kind: 'lobby' }
@@ -138,8 +124,7 @@ class TeamBattle {
     const { scenario } = dealScenario();
     this.phase = { kind: 'briefing' };
     this.refreshAll();
-    startGame(scenario, 'teams', this.world, this.ui);
-    await sleep(settings.briefingSeconds, signal);
+    await startGame(scenario, 'teams', this.world, this.ui, signal);
 
     const totals: Totals = { ranger: 0, predator: 0 };
     const played: Played[] = [];
