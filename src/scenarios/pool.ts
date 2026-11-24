@@ -7,6 +7,9 @@ import type { Option, Round } from '../game/types';
 // Predator options are stored as the size of the spreadsheet's −2..−4 (4 is the highest-impact move),
 // so for both sides the highest score is the best pick. scenarios.test.ts enforces the format.
 
+const DEFEND = 'Choose the best response.';
+const ATTACK = 'Choose the best attack.';
+
 /** Options in answer-key order: strongest first, scored 4, 3, 2. */
 const ranked = (...options: (string | Omit<Option, 'score'>)[]): Option[] =>
   options.map((o, i) => ({ ...(typeof o === 'string' ? { text: o } : o), score: 4 - i }));
@@ -17,7 +20,7 @@ export const questionPool: Round[] = [
     situation: 'Customer information exposed in Westpac Live',
     detail: 'Penetration Testing Team [PTT] discovers a vulnerability that could let someone view any customer’s personally identifiable information (PII) Data.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Fix the access checks and retest with the penetration testers.',
         'Escalate immediately and get help to contain the exposure.',
@@ -25,7 +28,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Sell stolen customer information to fraudsters.', effect: 'steal' },
         { text: 'Steal personal information from thousands of accounts.', effect: 'steal' },
@@ -38,7 +41,7 @@ export const questionPool: Round[] = [
     situation: 'Critical Software patch',
     detail: 'Software Vendor releases a critical patch. The Distributed Controls Assessment Team decides that deploying it requires a CISO override.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Action the urgent override and prepare a safe rollout.',
         'Check affected systems and test the patch promptly.',
@@ -46,7 +49,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Exploit the flaw to steal internal files.', effect: 'steal' },
         'Exploit & Install malware to maintain unauthorised access.',
@@ -59,7 +62,7 @@ export const questionPool: Round[] = [
     situation: 'Plaintext password in Source Code',
     detail: 'Application Security Team (AppSec) identifies a plaintext password in an application\'s source code.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Revoke or rotate the passwords regularly & amend the source code.',
         'Replace the hardcoded password with an approved secrets manager.',
@@ -67,7 +70,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Use the stolen password to sabotage critical services.', effect: 'burn' },
         { text: 'Steal sensitive data using the compromised account.', effect: 'steal' },
@@ -80,7 +83,7 @@ export const questionPool: Round[] = [
     situation: 'Compromised software package',
     detail: 'Penetration Testing Team [PTT] identifies that a popular software package has been compromised in a supply chain attack.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Alert the response team and block affected package versions.',
         'Find affected systems and move to a verified safe version.',
@@ -88,7 +91,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Push malicious changes into production applications.', effect: 'burn' },
         'Use stolen credentials to break into development systems.',
@@ -101,7 +104,7 @@ export const questionPool: Round[] = [
     situation: 'Security requirements for a new feature',
     detail: 'An application team is building a new feature and needs guidance from Secure By Design (SBD).',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Engage SBD during design and Adhere to security requirements.',
         'Review threats with SBD before development starts.',
@@ -109,7 +112,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'App is Insecure, Take over customer accounts to commit fraud.',
         'Alter customer records without authorisation.',
@@ -122,7 +125,7 @@ export const questionPool: Round[] = [
     situation: 'Production release with a high vulnerability',
     detail: 'An application team wants to release an application with a high-rated vulnerability.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Hold the release, fix the vulnerability and retest with [PTT].',
         'Advise Devs to Fix before releasing with the vulnerability.',
@@ -130,7 +133,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Exploit the vulnerability to shut down critical services.', effect: 'burn' },
         { text: 'Sell stolen application data to criminals.', effect: 'steal' },
@@ -143,7 +146,7 @@ export const questionPool: Round[] = [
     situation: 'Vulnerable dependency found by Snyk',
     detail: 'AppSec\'s Snyk scan finds a vulnerable dependency in your application.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Upgrade to a fixed version, test and rescan.',
         'Remove the dependency if the application does not need it.',
@@ -151,7 +154,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Destroy data across the compromised systems.', effect: 'burn' },
         'Use stolen secrets to break into connected systems.',
@@ -164,7 +167,7 @@ export const questionPool: Round[] = [
     situation: 'SaaS onboarding without SBD',
     detail: 'A new catalyst delivery unit (DU) wants to start using a SaaS tool without engaging Secure By Design (SBD).',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Engage SBD and complete required reviews before onboarding.',
         'Check whether an approved tool already meets the need.',
@@ -172,7 +175,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Abuse the SaaS connection to steal internal company data.', effect: 'steal' },
         { text: 'Steal confidential files stored in the tool.', effect: 'steal' },
@@ -185,7 +188,7 @@ export const questionPool: Round[] = [
     situation: 'Critical findings from Argus',
     detail: 'Westpac\'s AI Code scan harness (called ARGUS) identifies Critical and High vulnerabilities in an application’s source code.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Escalate immediately and pause affected releases while findings are assessed.',
         'Prioritise confirmed vulnerabilities, fix them and request rescan.',
@@ -193,7 +196,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Use stolen administrator access to destroy production data.', effect: 'burn' },
         'Create a hidden administrator account for future attacks.',
@@ -206,7 +209,7 @@ export const questionPool: Round[] = [
     situation: 'Sensitive data in application logs',
     detail: 'Penetration Testing Team [PTT] discovers that a Prod application is writing customer information and access tokens into its logs.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Escalate, stop sensitive logging and revoke exposed tokens.',
         'Restrict log access and help assess the exposure.',
@@ -214,7 +217,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         { text: 'Use stolen tokens to steal data across multiple accounts.', effect: 'steal' },
         'Use stolen access tokens to impersonate customers.',
@@ -227,7 +230,7 @@ export const questionPool: Round[] = [
     situation: 'Suspicious email link',
     detail: 'You receive an unexpected email containing a link.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Verify the sender through another channel before even thinking about opening the link.',
         'Looks suspicious, mark as phishing.',
@@ -235,7 +238,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Make the request urgent so the recipient acts without checking first.',
         'Make the message appear routine so the recipient trusts the request.',
@@ -248,7 +251,7 @@ export const questionPool: Round[] = [
     situation: 'Password practices',
     detail: 'What approach would you take when dealing with passwords?',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Create unique passwords and store them using approved security tools.',
         'Change passwords regularly avoiding the same basic password pattern.',
@@ -256,7 +259,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for accounts where users may have weak password practices.',
         'Target random accounts without considering their existing security controls.',
@@ -269,7 +272,7 @@ export const questionPool: Round[] = [
     situation: 'Unexpected MFA notification',
     detail: 'You receive an unexpected MFA notification on your mobile.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Reject the request and report the unexpected authentication activity immediately.',
         'Ignore the request because it will eventually disappear by itself.',
@@ -277,7 +280,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for users who may approve unexpected requests without checking them.',
         'Avoid accounts protected by additional authentication controls whenever possible.',
@@ -290,7 +293,7 @@ export const questionPool: Round[] = [
     situation: 'Important security update',
     detail: 'Your device has an important security update available.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Install the approved update according to the required security process.',
         'Delay the update until the existing software begins experiencing problems.',
@@ -298,7 +301,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for outdated systems that may be missing important security protections.',
         'Focus on devices that consistently receive their security updates promptly.',
@@ -311,7 +314,7 @@ export const questionPool: Round[] = [
     situation: 'Request for sensitive information',
     detail: 'Someone requests sensitive information from you.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Verify the person\'s identity independently before sharing the requested information.',
         'Ask the Requester why they need this information.',
@@ -319,7 +322,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Make the request appear familiar and relevant to the person\'s normal work.',
         'Make the request unusual so the recipient immediately questions its legitimacy.',
@@ -332,7 +335,7 @@ export const questionPool: Round[] = [
     situation: 'Installing new software',
     detail: 'You need software that isn\'t installed on your work device.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Request the application through the organisation\'s approved technology process.',
         'Download the application directly from an approved website.',
@@ -340,7 +343,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for users who regularly install software outside approved technology processes.',
         'Focus exclusively on computers where application installation is strictly controlled.',
@@ -353,7 +356,7 @@ export const questionPool: Round[] = [
     situation: 'Discovering a vulnerability',
     detail: 'You discover a potential security vulnerability.',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Document the vulnerability and report it through the approved security process.',
         'Discuss the vulnerability broadly so other employees know about the problem.',
@@ -361,7 +364,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for weaknesses that remain unidentified, unpatched or incorrectly configured.',
         'Avoid systems with known vulnerabilities because administrators may monitor them closely.',
@@ -374,7 +377,7 @@ export const questionPool: Round[] = [
     situation: 'General approach to cybersecurity',
     detail: 'What is your general approach to cybersecurity?',
     ranger: {
-      prompt: 'What do YOU do Next?',
+      prompt: DEFEND,
       options: ranked(
         'Cyber Security Is Everyone\'s Job, Every Day.',
         'Follow security controls and report suspicious behaviour whenever it is identified.',
@@ -382,7 +385,7 @@ export const questionPool: Round[] = [
       ),
     },
     predator: {
-      prompt: 'What do YOU do Next?',
+      prompt: ATTACK,
       options: ranked(
         'Look for situations where people bypass security controls for convenience.',
         'Target processes that have strong controls and little opportunity for mistakes.',

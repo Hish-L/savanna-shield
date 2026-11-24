@@ -163,6 +163,7 @@ export class UI {
         <div class="status-chip">${side === 'ranger' ? 'Defending' : 'Attacking'}\u2026</div>
         <div class="who">${this.avatar(who)}<div><b>${esc(name)}</b><small>${esc(sub)}</small></div><div class="pts">${totals[side]}</div></div>
         <div class="timer"><div class="fill"></div></div>
+        <p class="prompt">${esc(round[side].prompt)}</p>
         ${options[side]
           .map((o, i) => `<button class="opt" data-side="${side}" data-i="${i}"><kbd>${isHuman(mode, side) ? KEYS[side][i] : mode === 'teams' ? 'ABC'[i] : '?'}</kbd><span>${esc(o.text)}</span><em></em></button>`)
           .join('')}
@@ -172,7 +173,7 @@ export class UI {
       <div class="hud reading ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
-          <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p><p class="ask">${esc(round.ranger.prompt)}</p></div>
+          <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
           <p class="read-hint" hidden></p>
         </header>
         ${card('ranger', 'ranger', 'Chief Ranger', DEFENDER_TITLE)}
@@ -224,7 +225,7 @@ export class UI {
         if (option === chosen) b.querySelector('em')!.textContent = `+${side === 'ranger' ? result.rangerPoints : result.predatorPoints}`;
       });
       card.querySelector('.pts')!.textContent = String(totals[side]);
-      if (!chosen) card.querySelector('.timer')!.insertAdjacentHTML('afterend', `<div class="timeout">⏱ Too slow, 0 points</div>`);
+      if (!chosen) card.querySelector('.prompt')!.insertAdjacentHTML('afterend', `<div class="timeout">⏱ Too slow, 0 points</div>`);
     }
     const [kind, label] = result.blocked
       ? ['blocked', '🛡️ Blocked!']
