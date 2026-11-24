@@ -384,7 +384,7 @@ kbd {
      and the Predator at the bottom, with the reserve in between. */
   :root:has(.hud.shared) { font-size: clamp(12px, min(3.2vw, 2.05vh), 20px); }
   .shared .topbar .stage b { font-size: 1.05rem; }
-  .shared .topbar .detail { display: none; }
+  .shared .topbar .detail { margin-top: 0.3rem; font-size: 0.95rem; line-height: 1.3; }
   .shared .topbar { padding: 0.9rem 0.8rem 0.5rem; }
   .shared .topbar .stage small { font-size: 0.65rem; top: -0.75rem; }
   .shared .timer { height: 0.5rem; }
