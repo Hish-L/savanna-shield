@@ -365,6 +365,7 @@ const SAYINGS = [
   ['Always', 'Encrypt'],
   ['Keep your', 'Source Code tidy'],
   ['Defending', 'Together'],
+  ['Never Forget', 'Security'],
 ];
 
 function bubbleTexture(lines: string[]): THREE.Texture {
