@@ -175,7 +175,7 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
     fill.classList.toggle('urgent', fraction < 0.35);
     const reading = left > answerMs;
     hint.hidden = !reading;
-    if (reading) hint.textContent = `Timer starts in ${Math.ceil((left - answerMs) / 1000)}s`;
+    if (reading) hint.textContent = `Read the question · answers in ${Math.ceil((left - answerMs) / 1000)}s`;
     if (left > 0) frame = requestAnimationFrame(tick);
     else if (!app.querySelector('.options.locked')) {
       buttons.forEach((x) => (x.disabled = true));

@@ -145,6 +145,7 @@ kbd {
   -webkit-text-stroke: 0; text-shadow: none;
 }
 .topbar .detail { margin: 0.5rem 0 0; font-size: 1.6rem; font-weight: 500; line-height: 1.4; text-wrap: pretty; color: var(--wbc-text); }
+.topbar .ask { margin: 0.6rem 0 0; font-size: 1.5rem; font-weight: 900; color: var(--wbc-red); }
 .timer { height: 0.8rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 .timer .fill { height: 100%; background: var(--accent); transform-origin: left; }
 .timer .fill.urgent { background: var(--wbc-red); }
@@ -176,7 +177,6 @@ kbd {
   font-size: 2rem; font-weight: 900; background: var(--accent); color: var(--on-accent); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep);
 }
 /* Prompts are short enough to sit on one line in the side cards. */
-.prompt { margin: 0.2rem 0; font-size: 1.45rem; font-weight: 800; line-height: 1.25; white-space: nowrap; }
 .opt {
   position: relative; display: flex; align-items: center; gap: 0.8rem; padding: 0.75rem 0.9rem; text-align: left;
   font-size: 1.05rem; line-height: 1.3; font-weight: 700; border-radius: 0.9rem;
@@ -221,7 +221,7 @@ kbd {
 /* Reveal: cards keep their width but move to the top and collapse to the pick, the best answer and points. */
 .card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1); }
 .card.revealed { top: 1.2rem; transform: none; gap: 0.7rem; }
-.card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen, .best) { display: none; }
+.card.revealed .timer, .card.revealed .lock, .card.revealed .opt:not(.chosen, .best) { display: none; }
 .card.revealed .opt:is(.chosen, .best) { padding: 0.75rem 0.9rem; font-size: 1.2rem; line-height: 1.25; }
 .card.revealed .opt:is(.chosen, .best) em { font-size: 1.5rem; }
 .card.revealed .timeout { font-size: 1.2rem; }
@@ -353,7 +353,7 @@ kbd {
   .one-player .card.ai:not(.revealed) .who { flex: 1; }
   .one-player .card.ai:not(.revealed) .who .avatar { width: 2.6rem; height: 2.6rem; }
   .one-player .card.ai:not(.revealed) .who small, .one-player .card.ai:not(.revealed) .who .pts { display: none; }
-  .one-player .card.ai:not(.revealed) :is(.timer, .prompt, .opt, .status-chip) { display: none; }
+  .one-player .card.ai:not(.revealed) :is(.timer, .opt, .status-chip) { display: none; }
   .one-player .card.ai:not(.revealed) .lock { position: static; opacity: 1; transform: none; padding: 0.3rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.08em; }
   .one-player .topbar .stage b { font-size: 1.05rem; }
   .one-player .topbar .detail { font-size: 1rem; }
@@ -374,8 +374,7 @@ kbd {
   .shared .card:not(.revealed) .who .avatar { width: 2.8rem; height: 2.8rem; }
   .shared .card:not(.revealed) .who b { font-size: 1.1rem; }
   .shared .card:not(.revealed) .who .pts { font-size: 1.5rem; min-width: 2.8rem; }
-  .shared .card:not(.revealed) .prompt { margin: 0; font-size: 1.15rem; }
-  .prompt { white-space: normal; }
+  .shared .topbar .ask, .one-player .topbar .ask { margin-top: 0.3rem; font-size: 1rem; }
   .shared .card:not(.revealed) .opt { padding: 0.45rem 0.7rem; font-size: 1rem; }
   .screen { gap: 0.8rem; padding: max(1.2rem, env(safe-area-inset-top)) 1.2rem max(1.2rem, env(safe-area-inset-bottom)); }
 
