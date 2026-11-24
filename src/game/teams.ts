@@ -124,7 +124,7 @@ class TeamBattle {
     const { scenario } = dealScenario();
     this.phase = { kind: 'briefing' };
     this.refreshAll();
-    await startGame(scenario, 'teams', this.world, this.ui, signal);
+    await startGame(scenario, this.world, this.ui, signal);
 
     const totals: Totals = { ranger: 0, predator: 0 };
     const played: Played[] = [];

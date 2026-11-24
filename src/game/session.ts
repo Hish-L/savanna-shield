@@ -130,11 +130,11 @@ export function dealScenario(): { scenario: Scenario } {
   return { scenario: buildScenario(dealQuestions())! };
 }
 
-/** Plays the intro tour, then the mission briefing; resolves when the first question should start. */
-export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI, signal?: AbortSignal): Promise<void> {
+/** Plays the intro tour; resolves when the first question should start. */
+export function startGame(scenario: Scenario, world: Savanna, ui: UI, signal?: AbortSignal): Promise<void> {
   world.newGame(scenario.predator.animal);
   world.setAttract(false);
-  return introTour(world, ui, signal).then(() => ui.briefing(scenario, mode, settings.briefingSeconds, signal));
+  return introTour(world, ui, signal);
 }
 
 /** The camera visits the waterhole, the Rangers and the Attackers, one caption each. Space or Enter skips it. */
@@ -168,7 +168,7 @@ async function introTour(world: Savanna, ui: UI, signal?: AbortSignal): Promise<
 /** Runs a full game on this device. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI): Promise<void> {
   const { scenario } = dealScenario();
-  await startGame(scenario, mode, world, ui);
+  await startGame(scenario, world, ui);
 
   const totals: Totals = { ranger: 0, predator: 0 };
   const played: Played[] = [];

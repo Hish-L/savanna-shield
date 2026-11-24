@@ -65,7 +65,6 @@ kbd {
   -webkit-text-stroke: 0.03em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
 }
 .tagline, .role { margin: 0; font-size: 1.5rem; font-weight: 600; }
-.eyebrow { text-transform: uppercase; letter-spacing: 0.3em; color: var(--predator); font-weight: 900; }
 
 /* Main menu: a column on the left like a console game, with the waterhole live on the right
    (the world shifts its view to make room). */
@@ -103,21 +102,10 @@ kbd {
 .mode b { font-size: 1.4rem; font-weight: 900; }
 .mode small { color: #595767; font-weight: 600; }
 
-.brief { max-width: 40rem; margin: 0; font-size: 1.8rem; font-weight: 700; }
-.controls { display: flex; gap: 1.2rem; font-size: 1.2rem; font-weight: 800; }
-.controls span { padding: 0.5rem 1rem; border-radius: 0.8rem; background: var(--panel); border: 0.18rem solid var(--accent); box-shadow: var(--sticker); }
-.controls .ranger { --accent: var(--ranger); }
-.controls .predator { --accent: var(--predator); }
 .avatar {
   flex: none; width: 1.8em; height: 1.8em; vertical-align: middle; border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, #ffffff, #cfe6ff 70%); border: 0.15rem solid var(--accent, #fff);
 }
-.avatar.hero { --accent: var(--predator); width: 9rem; height: 9rem; border-width: 0.3rem; box-shadow: var(--sticker); }
-/* Briefing: each line rises in on its own beat (--d). The banner stays pinned at the top while
-   the lines below grow in and re-centre. */
-.briefing { justify-content: flex-start; }
-.briefing > .missions { margin-top: auto; }
-.briefing > :last-child { margin-bottom: auto; }
 /* Intro tour: a caption at the foot of the live scene while the camera points things out. */
 .tour {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -131,19 +119,6 @@ kbd {
   animation: rise-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 .caption b { color: var(--wbc-red); }
-.beat { animation: rise-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--d, 0s) both; }
-.missions { display: flex; gap: 3rem; justify-content: center; }
-.mission { display: flex; flex-direction: column; gap: 0.8rem; align-items: center; width: 34rem; min-width: 0; }
-/* Each team's keys sit centred at the foot of its half, level with the other team's. */
-.mission > .beat:last-child { margin-top: auto; padding-top: 0.4rem; }
-.mission .eyebrow { padding: 0.25rem 1rem; border-radius: 1rem; background: var(--wbc-red); color: #fff; font-size: 1.1rem; border: 0.15rem solid #fff; box-shadow: var(--sticker); }
-.mission > .beat:first-child { display: grid; gap: 0.4rem; justify-items: center; }
-.mission h2 { font-size: clamp(2rem, 3vw, 3rem); }
-/* Both halves hold their final places from the start; the Rangers' half is only drawn shifted to the
-   centre, then glides into place. A transform never moves anything else, so nothing re-centres. */
-.missions.pair > .mission:first-child { animation: to-place 0.8s cubic-bezier(0.6, 0, 0.2, 1) var(--open) both; --from: calc(50% + 1.5rem) 0; }
-.start-prompt { margin: 0; font-size: 1.3rem; font-weight: 800; animation: pulse 1.6s ease-in-out infinite; }
-.countdown { width: 30rem; height: 0.7rem; border-radius: 1rem; background: var(--wbc-red); border: 0.12rem solid #fff; transform-origin: left; animation: shrink linear forwards; }
 
 /* ---------- in-game HUD ---------- */
 .hud { position: absolute; inset: 0; }
@@ -307,10 +282,8 @@ kbd {
 .again { margin: 0.5rem 0 0; font-weight: 700; animation: pulse 1.6s infinite; }
 
 @keyframes fade-in { from { opacity: 0; } }
-@keyframes to-place { from { translate: var(--from); } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(1.2rem) scale(0.96); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-50%) scale(0.85); } }
-@keyframes shrink { to { transform: scaleX(0); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
 @keyframes best-pop { from { opacity: 0; transform: scale(0.3) rotate(-12deg); } }
 @keyframes best-glow { 50% { transform: scale(1.08); box-shadow: 0 0.2rem 0 var(--wbc-navy-deep), 0 0 1rem var(--best); } }
@@ -337,11 +310,6 @@ kbd {
 @media (max-aspect-ratio: 1/1), (max-height: 500px) {
   .screen h2 { font-size: 2.6rem; }
   .tagline, .role { font-size: 1.15rem; }
-  .brief { font-size: 1.3rem; }
-  .avatar.hero { width: 5rem; height: 5rem; }
-  .missions { flex-direction: column; gap: 1.2rem; align-items: center; }
-  .mission { width: min(30rem, 90vw); }
-  .missions.pair > .mission:first-child { --from: 0 calc(50% + 0.6rem); }
   /* In game, the question and cards stack in normal flow, so they can never overlap whatever the
      screen height; the HUD scrolls if a screen is too short for everything. */
   .hud {

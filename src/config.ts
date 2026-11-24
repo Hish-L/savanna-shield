@@ -6,7 +6,6 @@ export const DEFAULTS = {
   roundSeconds: 15,
   readingWordsPerSecond: 3,
   readingBufferSeconds: 3,
-  briefingSeconds: 3,
   /** 0 = each reveal waits for Space (or both phones tapping Next). */
   autoContinueSeconds: 0,
 };

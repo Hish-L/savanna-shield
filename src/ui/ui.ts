@@ -37,7 +37,6 @@ const SETTING_FIELDS: { key: keyof Settings; label: string; min: number; max: nu
   { key: 'roundSeconds', label: 'Answer time (seconds)', min: 5, max: 120 },
   { key: 'readingWordsPerSecond', label: 'Reading pace (words per second)', min: 0.5, max: 10, step: 0.5 },
   { key: 'readingBufferSeconds', label: 'Extra reading time (seconds)', min: 0, max: 30 },
-  { key: 'briefingSeconds', label: 'Play Together briefing hold (seconds)', min: 1, max: 30 },
   { key: 'autoContinueSeconds', label: 'Auto-continue after reveal (seconds, 0 = wait for Space)', min: 0, max: 120 },
 ];
 
@@ -143,57 +142,6 @@ export class UI {
         flash('Defaults restored.');
       };
       form.querySelector<HTMLButtonElement>('.back')!.onclick = done;
-    });
-  }
-
-  /**
-   * The mission, revealed line by line on one page. With both sides on this screen, the Rangers'
-   * half fills in at the centre, then slides left into its place as the Attackers' half fills in. Resolves on Space
-   * or a tap; Team Battle has no one at the host keyboard, so it moves on by itself `seconds` after
-   * the last line appears.
-   */
-  briefing(scenario: Scenario, mode: Mode, seconds: number, signal?: AbortSignal): Promise<void> {
-    const controls = (side: Side) =>
-      mode === 'teams' ? 'Phone' : isHuman(mode, side) ? KEYS[side].join(' ') : 'Computer';
-    const missions: Record<Side, string[]> = {
-      ranger: ['Rangers', 'Protect the watering hole.', 'Threats are coming. Pick the best defence.'],
-      predator: ['Attackers', 'Raid the watering hole.', 'Find the weak spot. Pick the most damaging move.'],
-    };
-    const portrait = (side: Side) => (side === 'ranger' ? 'ranger' : scenario.predator.animal);
-    const sides = localSide(mode) ? [localSide(mode)!] : (['ranger', 'predator'] as Side[]);
-    const STEP = 0.8; // seconds between lines
-    const OPEN = 0.8; // seconds for the Rangers' half to slide aside
-    let t = 0;
-    let open = 0; // when the Rangers' half starts sliding aside
-    const beat = (html: string) => `<div class="beat" style="--d:${(t += STEP) - STEP}s">${html}</div>`;
-    const halves = sides.map((side, n) => {
-      const [name, head, ...rest] = missions[side];
-      const lines = [
-        beat(`${this.avatar(portrait(side), 'hero')}<small class="eyebrow">${name}</small><h2>${head}</h2>`),
-        ...rest.map((text) => beat(`<p class="brief">${text}</p>`)),
-        beat(`<div class="controls"><span class="${side}">${this.avatar(portrait(side))} ${name}: <kbd>${controls(side)}</kbd></span></div>`),
-      ];
-      if (n === 0 && sides.length > 1) {
-        open = t; // the Rangers' half slides aside before the Attackers' lines start
-        t += OPEN + 0.2;
-      }
-      return `<div class="mission">${lines.join('')}</div>`;
-    });
-    const auto = mode === 'teams';
-    const end = t;
-    const prompt = beat(auto
-      ? `<div class="countdown" style="animation-delay:${end}s;animation-duration:${seconds}s"></div>`
-      : `<p class="start-prompt"><kbd>Space</kbd> or tap to start</p>`);
-    this.root.innerHTML = `
-      <div class="screen briefing">
-        ${BRAND}
-        <div class="missions${sides.length > 1 ? ' pair' : ''}" style="--open:${open}s">${halves.join('')}</div>
-        ${prompt}
-      </div>`;
-    if (!auto) return this.onSpace(this.root, signal);
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(resolve, (end + seconds) * 1000);
-      signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true });
     });
   }
 
