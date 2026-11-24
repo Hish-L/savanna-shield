@@ -70,6 +70,9 @@ export class Watchtower {
   private alertLevel = 0;
   private alertHold = 0;
   private focus: THREE.Vector3 | null = null;
+  /** Intro tour: stop the sweep so the camera can hold on the Chief's face. */
+  still = false;
+  private readonly chief: THREE.Object3D;
 
   constructor(position: THREE.Vector3) {
     this.group.position.copy(position);
@@ -118,7 +121,7 @@ export class Watchtower {
     }
 
     // The Chief Ranger stands at the back of the platform behind a searchlight on a short post.
-    const chief = ranger(true).root;
+    const chief = (this.chief = ranger(true).root);
     chief.scale.multiplyScalar(1.2); // a touch larger than life so he reads from across the reserve
     chief.position.set(0, deckY + 0.11, -0.35);
     const post = stick(new THREE.Vector3(0, deckY + 0.11, 0.55), new THREE.Vector3(0, deckY + 1.15, 0.55), 0.05, poleWood);
@@ -149,6 +152,16 @@ export class Watchtower {
     this.group.add(this.beam, this.light, this.light.target);
   }
 
+  /** The Chief Ranger's face, in world space. */
+  head(): THREE.Vector3 {
+    return this.chief.localToWorld(new THREE.Vector3(0, 1.95, 0));
+  }
+
+  /** The way the Chief is looking, flat on the ground. */
+  facing(): THREE.Vector3 {
+    return new THREE.Vector3(0, 0, 1).transformDirection(this.lookout.matrixWorld).setY(0).normalize();
+  }
+
   /** Lock the searchlight onto the threat at full brightness for `seconds`, then fade back to sweeping. */
   alert(focus: THREE.Vector3 | null, seconds: number): void {
     this.alertLevel = 1;
@@ -159,7 +172,7 @@ export class Watchtower {
   update(dt: number): void {
     this.alertHold -= dt;
     if (this.alertHold <= 0) this.alertLevel = damp(this.alertLevel, 0, 0.8, dt);
-    this.angle += dt * (0.35 + this.alertLevel * 1.4);
+    if (!this.still) this.angle += dt * (0.35 + this.alertLevel * 1.4);
     const sweep = new THREE.Vector3(Math.cos(this.angle) * 11, 0, Math.sin(this.angle) * 11);
     const world = this.focus && this.alertLevel > 0.3 ? this.focus : sweep;
     const local = this.group.worldToLocal(world.clone());

@@ -8,7 +8,7 @@ import { Helicopter } from './helicopter';
 import { createFlora } from './flora';
 import { Effects } from './particles';
 import { Jeep, Watchtower, createStation } from './structures';
-import { FENCE_RADIUS, createTerrain, heightAt } from './terrain';
+import { FENCE_RADIUS, WATER_RADIUS, createTerrain, heightAt } from './terrain';
 import { Waterhole } from './waterhole';
 import { damp, polar } from './util';
 
@@ -51,9 +51,14 @@ export class Savanna {
   private orbit = 0.6;
   private attract = true;
   private shake = 0;
-  /** Reveal close-up: what the camera zooms to and when it pulls back out. */
-  private shot: { target: () => THREE.Vector3; until: number } | null = null;
+  /** Reveal close-up: what the camera zooms to, when it pulls back out, and how near it gets. */
+  private shot: { target: () => THREE.Vector3; until: number; distance: number; height: number; from?: THREE.Vector3 } | null = null;
+  /** Intro tour: a bobbing arrow and ring over whatever the camera is showing. */
+  private readonly marker = createMarker();
+  private markerAt: (() => THREE.Vector3) | null = null;
   private zoom = 0;
+  /** Where the close-up is aimed, eased so the intro tour pans from one subject to the next. */
+  private readonly view = { focus: new THREE.Vector3(), away: new THREE.Vector3(1, 0, 0), distance: 0, height: 0 };
   /** Main menu: the view slides so the waterhole sits beside the menu (0 = centred, 1 = fully shifted). */
   private menu = false;
   private menuShift = 0;
@@ -90,6 +95,7 @@ export class Savanna {
       this.effects.group,
       this.helicopter.group,
       this.elephant.group,
+      this.marker,
     );
     this.pack = createPack('hyena');
     this.scene.add(this.pack.group);
@@ -111,7 +117,37 @@ export class Savanna {
     this.herd.reset();
     this.effects.clear();
     this.shot = null;
+    this.spotlight(null);
     this.setDanger(0.3);
+  }
+
+  /** Intro tour: zooms in on the waterhole, the Chief Ranger's tower or the pack, with an arrow over it. Null pulls back out. */
+  spotlight(subject: 'waterhole' | 'ranger' | 'predator' | null): void {
+    const now = this.timer.getElapsed();
+    if (!subject) {
+      if (this.shot) this.shot.until = Math.min(this.shot.until, now);
+      this.markerAt = null;
+      this.tower.still = false;
+      return;
+    }
+    const pack = this.pack;
+    const out = polar(pack.attackAngle, 1);
+    // Ranger: face to face with the Chief, held still on his platform. Attackers: low, from the inner
+    // flank, so the pack reads as a line squaring up to the fence.
+    const shots = {
+      waterhole: { target: () => new THREE.Vector3(), distance: 22, height: 15, lift: 3.5, size: 1 },
+      ranger: { target: () => this.tower.head(), from: this.tower.facing(), distance: 4.5, height: 0.6, lift: 0.75, size: 0.18 },
+      predator: {
+        target: () => pack.focus().setY(1),
+        from: new THREE.Vector3(-out.x - out.z, 0, -out.z + out.x).normalize(),
+        distance: 16, height: 2.5, lift: 2.2, size: 0.5,
+      },
+    };
+    const { lift, size, ...shot } = shots[subject];
+    this.shot = { ...shot, until: Infinity };
+    this.markerAt = shot.target;
+    this.marker.userData = { lift, size, ring: subject === 'waterhole' };
+    this.tower.still = subject === 'ranger';
   }
 
   setAttract(attract: boolean): void {
@@ -134,7 +170,7 @@ export class Savanna {
     const angle = this.pack.attackAngle;
     const gate = polar(angle, FENCE_RADIUS);
     const closeUp = (target: () => THREE.Vector3, seconds: number) => {
-      this.shot = { target, until: this.timer.getElapsed() + seconds };
+      this.shot = { target, until: this.timer.getElapsed() + seconds, distance: CLOSE_UP_DISTANCE, height: CLOSE_UP_HEIGHT };
     };
     const at = (point: THREE.Vector3) => () => point;
     if (result.blocked) {
@@ -174,6 +210,23 @@ export class Savanna {
   private setDanger(danger: number): void {
     this.pack.setPressure(danger);
     this.fence.setStrength(THREE.MathUtils.lerp(1.05, 0.45, danger));
+  }
+
+  private updateMarker(dt: number): void {
+    const s = THREE.MathUtils.clamp(this.marker.scale.x + (this.markerAt ? dt : -dt) * 3, 0.001, 1);
+    this.marker.scale.setScalar(s);
+    this.marker.visible = s > 0.01;
+    if (!this.markerAt) return;
+    const t = this.timer.getElapsed();
+    const [arrow, ring] = this.marker.children;
+    const { lift, size, ring: showRing } = this.marker.userData as { lift: number; size: number; ring: boolean };
+    this.marker.position.copy(this.markerAt());
+    arrow.scale.setScalar(size);
+    arrow.position.y = lift + Math.abs(Math.sin(t * 3)) * 1.2 * size;
+    arrow.rotation.y = t * 1.5;
+    ring.visible = showRing;
+    ring.scale.setScalar(1 + (t % 1.2) * 0.15);
+    (ring as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material.opacity = 0.9 - (t % 1.2) * 0.6;
   }
 
   private createSky(): THREE.Mesh {
@@ -220,9 +273,16 @@ export class Savanna {
     this.zoom = damp(this.zoom, zoomIn ? 1 : 0, zoomIn ? 2.2 : 1.6, dt);
     if (this.shot) {
       const t = THREE.MathUtils.smoothstep(this.zoom, 0, 1);
-      const target = this.shot.target();
-      const away = position.clone().sub(target).setY(0).normalize();
-      const close = target.clone().addScaledVector(away, CLOSE_UP_DISTANCE).setY(target.y + CLOSE_UP_HEIGHT);
+      // Starting from the wide view, aim straight at the subject; already zoomed in, pan across to it.
+      const ease = this.zoom < 0.05 ? 1 : 1 - Math.exp(-2.5 * dt);
+      const view = this.view;
+      view.focus.lerp(this.shot.target(), ease);
+      view.distance = THREE.MathUtils.lerp(view.distance, this.shot.distance, ease);
+      view.height = THREE.MathUtils.lerp(view.height, this.shot.height, ease);
+      const target = view.focus;
+      view.away.lerp(this.shot.from ?? position.clone().sub(target).setY(0).normalize(), ease).normalize();
+      const away = view.away;
+      const close = target.clone().addScaledVector(away, view.distance).setY(target.y + view.height);
       position.lerp(close, t);
       look.lerp(target, t);
       if (!zoomIn && this.zoom < 0.01) this.shot = null;
@@ -239,6 +299,7 @@ export class Savanna {
     else if (w > h) this.camera.setViewOffset(w, h, -w * 0.2 * this.menuShift, 0, w, h);
     else this.camera.setViewOffset(w, h, 0, h * 0.3 * this.menuShift, w, h);
 
+    this.updateMarker(dt);
     this.waterhole.update(dt, this.timer.getElapsed(), this.camera.position);
     for (const at of this.fence.update(dt, this.pack.positions())) {
       this.effects.dust(at, 25);
@@ -253,4 +314,25 @@ export class Savanna {
     this.elephant.update(dt);
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/** Westpac-red arrow pointing down at the subject, plus a pulsing ring round the waterhole's shore. */
+function createMarker(): THREE.Group {
+  const red = new THREE.MeshBasicMaterial({ color: '#da1710', fog: false });
+  const arrow = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.6, 4).rotateX(Math.PI), red);
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 0.6), red);
+  shaft.position.y = 1.5;
+  const outline = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2, 4).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.BackSide, fog: false }));
+  arrow.add(head, shaft, outline);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(WATER_RADIUS + 0.4, WATER_RADIUS + 1.1, 64).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, depthWrite: false, fog: false }),
+  );
+  ring.position.y = 0.4;
+  const marker = new THREE.Group();
+  marker.add(arrow, ring);
+  marker.visible = false;
+  marker.scale.setScalar(0.001);
+  return marker;
 }

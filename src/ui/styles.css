@@ -118,6 +118,19 @@ kbd {
 .briefing { justify-content: flex-start; }
 .briefing > .missions { margin-top: auto; }
 .briefing > :last-child { margin-bottom: auto; }
+/* Intro tour: a caption at the foot of the live scene while the camera points things out. */
+.tour {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 2rem 2rem 12vh; background: linear-gradient(transparent 55%, rgba(17, 15, 51, 0.7));
+}
+.tour > .brand { font-size: 1rem; }
+.caption {
+  margin: 0; max-width: 90vw; font-size: clamp(2rem, 6vw, 4rem); font-weight: 900; line-height: 1.1; text-align: center; text-wrap: balance;
+  color: #fff; -webkit-text-stroke: 0.035em var(--wbc-navy); paint-order: stroke fill;
+  text-shadow: 0 0.07em 0 var(--wbc-navy-deep), 0 0.25em 0.8em rgba(0, 0, 0, 0.45);
+  animation: rise-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.caption b { color: var(--wbc-red); }
 .beat { animation: rise-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--d, 0s) both; }
 .missions { display: flex; gap: 3rem; justify-content: center; }
 .mission { display: flex; flex-direction: column; gap: 0.8rem; align-items: center; width: 34rem; min-width: 0; }

@@ -197,6 +197,16 @@ export class UI {
     });
   }
 
+  /** Intro tour: one caption over the live scene for `seconds`. `html` is trusted markup. */
+  caption(html: string, seconds: number, signal?: AbortSignal): Promise<void> {
+    this.root.innerHTML = `<div class="tour">${BRAND}<p class="caption">${html}</p></div>`;
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) return reject(signal.reason);
+      const timer = setTimeout(resolve, seconds * 1000);
+      signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+    });
+  }
+
   round(scenario: Scenario, round: Round, index: number, options: Record<Side, Option[]>, mode: Mode, totals: Totals): void {
     this.shown = options;
     const p = scenario.predator;

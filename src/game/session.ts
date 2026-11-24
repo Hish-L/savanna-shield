@@ -130,11 +130,39 @@ export function dealScenario(): { scenario: Scenario } {
   return { scenario: buildScenario(dealQuestions())! };
 }
 
-/** Shows the mission briefing; resolves when the first question should start. */
+/** Plays the intro tour, then the mission briefing; resolves when the first question should start. */
 export function startGame(scenario: Scenario, mode: Mode, world: Savanna, ui: UI, signal?: AbortSignal): Promise<void> {
   world.newGame(scenario.predator.animal);
   world.setAttract(false);
-  return ui.briefing(scenario, mode, settings.briefingSeconds, signal);
+  return introTour(world, ui, signal).then(() => ui.briefing(scenario, mode, settings.briefingSeconds, signal));
+}
+
+/** The camera visits the waterhole, the Rangers and the Attackers, one caption each. Space or Enter skips it. */
+async function introTour(world: Savanna, ui: UI, signal?: AbortSignal): Promise<void> {
+  const tour = [
+    ['waterhole', 'This is the <b>Westpac</b> watering hole', 2.8],
+    ['ranger', '<b>Rangers</b>, defend it', 3.8],
+    ['predator', '<b>Attackers</b>, raid it', 3.8],
+  ] as const;
+  const skip = new AbortController();
+  const onKey = (e: KeyboardEvent) => {
+    if (e.repeat || (e.code !== 'Space' && e.key !== 'Enter')) return;
+    e.preventDefault();
+    skip.abort();
+  };
+  window.addEventListener('keydown', onKey);
+  const stop = signal ? AbortSignal.any([signal, skip.signal]) : skip.signal;
+  try {
+    for (const [subject, text, seconds] of tour) {
+      world.spotlight(subject);
+      await ui.caption(text, seconds, stop);
+    }
+  } catch (e) {
+    if (signal?.aborted || !skip.signal.aborted) throw e;
+  } finally {
+    window.removeEventListener('keydown', onKey);
+    world.spotlight(null);
+  }
 }
 
 /** Runs a full game on this device. */
