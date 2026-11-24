@@ -3,6 +3,7 @@ import { buildScenario, dealQuestions } from '../scenarios';
 import type { Savanna } from '../scene/world';
 import { KEYS, isHuman, localSide, type Played, type Totals, type UI } from '../ui/ui';
 import { aiDelay, aiPick } from './ai';
+import * as clock from './clock';
 import { readingSeconds } from './reading';
 import { resolveRound, type RoundResult } from './scoring';
 import type { Mode, Option, Round, Scenario, Side } from './types';
@@ -47,10 +48,10 @@ function listenForInput(mode: Mode, ui: UI, pick: (side: Side, index: number) =>
 
 /** Animates the round timer bar until the returned function is called. It stays full for `readSeconds`, then drains. */
 export function runTimer(ui: UI, readSeconds: number): () => void {
-  const start = performance.now();
+  const start = clock.now();
   let frame = 0;
   const tick = () => {
-    const elapsed = (performance.now() - start) / 1000;
+    const elapsed = (clock.now() - start) / 1000;
     ui.timer(Math.min(1, 1 - (elapsed - readSeconds) / settings.roundSeconds), Math.max(0, readSeconds - elapsed));
     frame = requestAnimationFrame(tick);
   };
@@ -75,8 +76,10 @@ export function collectPicks(
   ui: UI,
   wire: PickWiring,
   onLock?: (side: Side, index: number) => void,
+  signal?: AbortSignal,
 ): Promise<Picks> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
     const picks: Partial<Picks> = {};
     let cleanups: (() => void)[] = [];
     let done = false;
@@ -94,20 +97,26 @@ export function collectPicks(
       onLock?.(side, index);
       if (picks.ranger && picks.predator) finish();
     };
-    const timer = window.setTimeout(finish, (readSeconds + settings.roundSeconds) * 1000);
-    cleanups = [...wire(choose, finish), runTimer(ui, readSeconds), () => clearTimeout(timer)];
+    const cancel = clock.after((readSeconds + settings.roundSeconds) * 1000, finish);
+    cleanups = [...wire(choose, finish), runTimer(ui, readSeconds), cancel];
+    // Quitting mid-round: tear the round down without scoring it.
+    signal?.addEventListener('abort', () => {
+      if (done) return;
+      done = true;
+      cleanups.forEach((f) => f());
+      reject(signal.reason);
+    }, { once: true });
   });
 }
 
 /** Inputs for keyboard/tap and the AI. */
 function localWiring(options: Record<Side, Option[]>, mode: Mode, ui: UI, readSeconds: number): PickWiring {
   return (choose) => {
-    const answersAt = performance.now() + readSeconds * 1000;
-    const cleanups = [listenForInput(mode, ui, (side, index) => performance.now() >= answersAt && choose(side, index))];
+    const answersAt = clock.now() + readSeconds * 1000;
+    const cleanups = [listenForInput(mode, ui, (side, index) => clock.now() >= answersAt && choose(side, index))];
     for (const side of SIDES) {
       if (isHuman(mode, side)) continue;
-      const timer = window.setTimeout(() => choose(side, options[side].indexOf(aiPick(options[side]))), (readSeconds + aiDelay()) * 1000);
-      cleanups.push(() => clearTimeout(timer));
+      cleanups.push(clock.after((readSeconds + aiDelay()) * 1000, () => choose(side, options[side].indexOf(aiPick(options[side])))));
     }
     return cleanups;
   };
@@ -165,23 +174,53 @@ async function introTour(world: Savanna, ui: UI, signal?: AbortSignal): Promise<
   }
 }
 
-/** Runs a full game on this device. */
+/** Rejects with the abort reason if `signal` aborts before `promise` settles. */
+function unlessAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    promise.then(resolve, reject);
+  });
+}
+
+/** Runs a full game on this device. Esc pauses it, with the choice to resume or quit to the main menu. */
 export async function playSession(mode: Mode, world: Savanna, ui: UI): Promise<void> {
-  const { scenario } = dealScenario();
-  await startGame(scenario, world, ui);
+  const quit = new AbortController();
+  const signal = quit.signal;
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || e.repeat || clock.isPaused()) return;
+    e.preventDefault();
+    clock.pause();
+    world.setPaused(true);
+    void ui.pauseMenu().then((choice) => {
+      clock.resume();
+      world.setPaused(false);
+      if (choice === 'menu') quit.abort();
+    });
+  };
+  window.addEventListener('keydown', onKey);
+  try {
+    const { scenario } = dealScenario();
+    await startGame(scenario, world, ui, signal);
 
-  const totals: Totals = { ranger: 0, predator: 0 };
-  const played: Played[] = [];
-  for (const [index, round] of scenario.rounds.entries()) {
-    const order = { ranger: shuffle([...round.ranger.options.keys()]), predator: shuffle([...round.predator.options.keys()]) };
-    const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
-    ui.round(scenario, round, index, options, mode, totals);
-    const readSeconds = readingSeconds(round);
-    const picks = await collectPicks(options, readSeconds, ui, localWiring(options, mode, ui, readSeconds));
-    applyResult(world, ui, round, picks, totals, played);
-    await ui.continueAfterReveal();
+    const totals: Totals = { ranger: 0, predator: 0 };
+    const played: Played[] = [];
+    for (const [index, round] of scenario.rounds.entries()) {
+      const order = { ranger: shuffle([...round.ranger.options.keys()]), predator: shuffle([...round.predator.options.keys()]) };
+      const options = { ranger: order.ranger.map((i) => round.ranger.options[i]), predator: order.predator.map((i) => round.predator.options[i]) };
+      ui.round(scenario, round, index, options, mode, totals);
+      const readSeconds = readingSeconds(round);
+      const picks = await collectPicks(options, readSeconds, ui, localWiring(options, mode, ui, readSeconds), undefined, signal);
+      applyResult(world, ui, round, picks, totals, played);
+      await unlessAborted(ui.continueAfterReveal(signal), signal);
+    }
+
+    world.setAttract(true);
+    await unlessAborted(ui.debrief(scenario, mode, totals, played, signal), signal);
+  } catch (err) {
+    if (!signal.aborted) throw err;
+  } finally {
+    window.removeEventListener('keydown', onKey);
+    world.setAttract(true);
   }
-
-  world.setAttract(true);
-  await ui.debrief(scenario, mode, totals, played);
 }

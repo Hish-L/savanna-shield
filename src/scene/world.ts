@@ -63,6 +63,9 @@ export class Savanna {
   private menu = false;
   private menuShift = 0;
   private readonly timer = new THREE.Timer();
+  /** Scene time in seconds; stands still while the game is paused. */
+  private time = 0;
+  private paused = false;
 
   constructor(container: HTMLElement) {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -123,7 +126,7 @@ export class Savanna {
 
   /** Intro tour: zooms in on the waterhole, the Chief Ranger's tower or the pack, with an arrow over it. Null pulls back out. */
   spotlight(subject: 'waterhole' | 'ranger' | 'predator' | null): void {
-    const now = this.timer.getElapsed();
+    const now = this.time;
     if (!subject) {
       if (this.shot) this.shot.until = Math.min(this.shot.until, now);
       this.markerAt = null;
@@ -154,6 +157,11 @@ export class Savanna {
     this.attract = attract;
   }
 
+  /** Freezes the scene (it keeps drawing the frozen frame). */
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+  }
+
   setMenu(menu: boolean): void {
     this.menu = menu;
   }
@@ -170,7 +178,7 @@ export class Savanna {
     const angle = this.pack.attackAngle;
     const gate = polar(angle, FENCE_RADIUS);
     const closeUp = (target: () => THREE.Vector3, seconds: number) => {
-      this.shot = { target, until: this.timer.getElapsed() + seconds, distance: CLOSE_UP_DISTANCE, height: CLOSE_UP_HEIGHT };
+      this.shot = { target, until: this.time + seconds, distance: CLOSE_UP_DISTANCE, height: CLOSE_UP_HEIGHT };
     };
     const at = (point: THREE.Vector3) => () => point;
     if (result.blocked) {
@@ -217,7 +225,7 @@ export class Savanna {
     this.marker.scale.setScalar(s);
     this.marker.visible = s > 0.01;
     if (!this.markerAt) return;
-    const t = this.timer.getElapsed();
+    const t = this.time;
     const [arrow, ring] = this.marker.children;
     const { lift, size, ring: showRing } = this.marker.userData as { lift: number; size: number; ring: boolean };
     this.marker.position.copy(this.markerAt());
@@ -256,11 +264,16 @@ export class Savanna {
   private frame(): void {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.05);
+    if (this.paused) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+    this.time += dt;
     // Attract mode circles the reserve; in play the camera sits across the waterhole from the
     // predators so both the herd and the threat stay in frame.
     if (this.attract) this.orbit += dt * 0.06;
     else {
-      const sway = Math.sin(this.timer.getElapsed() * 0.15) * 0.3;
+      const sway = Math.sin(this.time * 0.15) * 0.3;
       const goal = this.pack.attackAngle + Math.PI + sway;
       this.orbit += Math.atan2(Math.sin(goal - this.orbit), Math.cos(goal - this.orbit)) * (1 - Math.exp(-0.8 * dt));
     }
@@ -269,7 +282,7 @@ export class Savanna {
     const look = this.attract ? new THREE.Vector3() : polar(this.pack.attackAngle, 4);
 
     // Reveal close-up: dolly in along the current view line toward the event, hold, then pull back.
-    const zoomIn = this.shot !== null && this.timer.getElapsed() < this.shot.until;
+    const zoomIn = this.shot !== null && this.time < this.shot.until;
     this.zoom = damp(this.zoom, zoomIn ? 1 : 0, zoomIn ? 2.2 : 1.6, dt);
     if (this.shot) {
       const t = THREE.MathUtils.smoothstep(this.zoom, 0, 1);
@@ -300,7 +313,7 @@ export class Savanna {
     else this.camera.setViewOffset(w, h, 0, h * 0.3 * this.menuShift, w, h);
 
     this.updateMarker(dt);
-    this.waterhole.update(dt, this.timer.getElapsed(), this.camera.position);
+    this.waterhole.update(dt, this.time, this.camera.position);
     for (const at of this.fence.update(dt, this.pack.positions())) {
       this.effects.dust(at, 25);
       this.shake = Math.max(this.shake, 0.7);

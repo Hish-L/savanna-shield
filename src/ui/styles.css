@@ -264,6 +264,11 @@ kbd {
 }
 .link-button:hover { border-color: #fff; background: rgba(255, 255, 255, 0.1); }
 
+/* ---------- pause ---------- */
+/* Everything under the pause overlay freezes mid-animation. */
+#ui.paused > :not(.pause), #ui.paused > :not(.pause) * { animation-play-state: paused !important; }
+.pause { z-index: 10; background: rgba(17, 15, 51, 0.85); }
+
 /* ---------- debrief ---------- */
 .debrief.ranger h2 { color: var(--ranger); }
 .debrief.predator h2 { color: var(--predator); }

@@ -1,4 +1,5 @@
 import { LOGO_SVG } from '../brand';
+import * as clock from '../game/clock';
 import { DEFAULTS, DEFENDER_TITLE, resetSettings, saveSettings, settings, type Settings } from '../config';
 import { questionPool } from '../scenarios';
 import { lessonFor, type LessonLine } from '../game/lesson';
@@ -150,8 +151,8 @@ export class UI {
     this.root.innerHTML = `<div class="tour">${BRAND}<p class="caption">${html}</p></div>`;
     return new Promise((resolve, reject) => {
       if (signal?.aborted) return reject(signal.reason);
-      const timer = setTimeout(resolve, seconds * 1000);
-      signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+      const cancel = clock.after(seconds * 1000, resolve);
+      signal?.addEventListener('abort', () => (cancel(), reject(signal.reason)), { once: true });
     });
   }
 
@@ -249,8 +250,8 @@ export class UI {
     const next = banner.querySelector('.next')!;
     if (auto) {
       // Acts like a tap on Continue; harmless if Space or a tap got there first.
-      const timer = setTimeout(() => next.dispatchEvent(new Event('pointerdown')), auto * 1000);
-      signal?.addEventListener('abort', () => clearTimeout(timer), { once: true });
+      const cancel = clock.after(auto * 1000, () => next.dispatchEvent(new Event('pointerdown')));
+      signal?.addEventListener('abort', cancel, { once: true });
     }
     return this.onSpace(next, signal);
   }
@@ -306,6 +307,42 @@ export class UI {
         <button class="link-button back"><kbd>Esc</kbd> Back</button>
       </div>`;
     this.root.querySelector<HTMLButtonElement>('.back')!.onclick = onBack;
+  }
+
+  /**
+   * Pause overlay over the frozen game. Esc or Space resumes, Enter quits to the main menu. While it
+   * is up it swallows every key and tap, so nothing underneath (answer keys, Space to continue) reacts.
+   */
+  pauseMenu(): Promise<'resume' | 'menu'> {
+    this.root.classList.add('paused');
+    this.root.insertAdjacentHTML('beforeend', `
+      <div class="screen pause">
+        ${BRAND}
+        <h2>Paused</h2>
+        <button class="mode resume"><kbd>Esc</kbd><b>Resume</b></button>
+        <button class="mode quit"><kbd>Enter</kbd><b>Main menu</b><small>Ends this game</small></button>
+      </div>`);
+    const overlay = this.root.lastElementChild as HTMLElement;
+    overlay.addEventListener('pointerdown', (e) => e.stopPropagation());
+    return new Promise((resolve) => {
+      const done = (choice: 'resume' | 'menu') => {
+        window.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+        this.root.classList.remove('paused');
+        resolve(choice);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        e.stopImmediatePropagation();
+        if (e.repeat) return;
+        const choice = e.key === 'Escape' || e.code === 'Space' ? 'resume' : e.key === 'Enter' ? 'menu' : null;
+        if (!choice) return;
+        e.preventDefault();
+        done(choice);
+      };
+      window.addEventListener('keydown', onKey, true);
+      overlay.querySelector<HTMLButtonElement>('.resume')!.onclick = () => done('resume');
+      overlay.querySelector<HTMLButtonElement>('.quit')!.onclick = () => done('menu');
+    });
   }
 
   /** Resolves on a Space key press or a tap on `target`. Aborting `signal` removes the listeners. */
@@ -385,9 +422,9 @@ export class UI {
       </div>`;
     // A short grace period so a double press of Space on the last reveal doesn't skip the debrief.
     return new Promise((resolve) =>
-      setTimeout(() => {
+      clock.after(2500, () => {
         if (!signal?.aborted) resolve(this.onSpace(this.root, signal));
-      }, 2500),
+      }),
     );
   }
 }
