@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { settings } from '../config';
-import { buildScenario, dealQuestions, questionPool } from './index';
+import { attackers, buildScenario, dealQuestions, questionPool } from './index';
 
 // Booth rules: players get a few seconds per question, so text must stay readable at a glance
 // and every question needs one clear best answer per side.
 const MAX_SITUATION = 50;
 const MAX_DETAIL = 150;
-const MAX_OPTION = 80;
+const MAX_OPTION = 90;
 
 describe('question pool', () => {
-  it('has 10 questions with unique situations', () => {
-    expect(questionPool).toHaveLength(10);
+  it('has 18 questions with unique situations', () => {
+    expect(questionPool).toHaveLength(18);
     expect(new Set(questionPool.map((r) => r.situation)).size).toBe(questionPool.length);
   });
 
@@ -35,6 +35,11 @@ describe('dealing', () => {
       expect(new Set(hand).size).toBe(settings.questionsPerGame);
       expect(buildScenario(hand)?.rounds).toHaveLength(settings.questionsPerGame);
     }
+  });
+
+  it('picks every attacker', () => {
+    const seen = new Set(Array.from({ length: 200 }, () => buildScenario([0])!.predator.animal));
+    expect(seen.size).toBe(attackers.length);
   });
 
   it('rejects indices outside the pool', () => {

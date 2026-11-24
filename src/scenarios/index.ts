@@ -4,12 +4,12 @@ import { questionPool } from './pool';
 
 export { questionPool };
 
-// One scenario frame; each game deals a random hand of questions from the pool into it.
-const releaseWeek: Omit<Scenario, 'rounds'> = {
-  id: 'release-week',
-  title: 'Release Week',
-  predator: { name: 'Hyena Pack', role: 'Opportunistic attackers', animal: 'hyena' },
-};
+// Each game deals a random hand of questions and a random attacker.
+export const attackers: Scenario['predator'][] = [
+  { name: 'Hyena Pack', role: 'Opportunistic attackers', animal: 'hyena' },
+  { name: 'Crocodile Crew', role: 'Patient ambushers', animal: 'crocodile' },
+  { name: 'Poacher Gang', role: 'Organised criminals', animal: 'poacher' },
+];
 
 /** Random, distinct pool indices for one game. */
 export function dealQuestions(random = Math.random): number[] {
@@ -22,8 +22,9 @@ export function dealQuestions(random = Math.random): number[] {
 }
 
 /** The scenario for a dealt hand, or null if an index isn't in this build's pool (version mismatch online). */
-export function buildScenario(questions: number[]): Scenario | null {
+export function buildScenario(questions: number[], random = Math.random): Scenario | null {
   const rounds = questions.map((i) => questionPool[i]);
   if (!rounds.length || rounds.some((r) => !r)) return null;
-  return { ...releaseWeek, rounds };
+  const predator = attackers[Math.floor(random() * attackers.length)];
+  return { id: 'release-week', title: 'Release Week', predator, rounds };
 }
