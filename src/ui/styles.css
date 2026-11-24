@@ -270,6 +270,7 @@ kbd {
 .pause { z-index: 10; background: rgba(17, 15, 51, 0.85); }
 
 /* ---------- debrief ---------- */
+.debrief > .brand { font-size: 1.5rem; }
 .debrief.ranger h2 { color: var(--ranger); }
 .debrief.predator h2 { color: var(--predator); }
 .finals { display: flex; gap: 1.5rem; }
