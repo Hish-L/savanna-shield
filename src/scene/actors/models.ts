@@ -431,8 +431,9 @@ export function ranger(slung = false): Model {
   // Head: friendly face with eyebrows, sideburns and a moustache over a smile.
   const head = new THREE.Group();
   const face = box(0.36, 0.38, 0.34, skin);
-  const nose = box(0.06, 0.08, 0.06, skin);
-  nose.position.set(0, -0.02, 0.19);
+  // A small wedge, narrow at the bridge and broader at the tip, a shade warmer than the face so it reads.
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.04, 0.09, 4).rotateY(Math.PI / 4).scale(1, 1, 0.8), mat('#c4875a'));
+  nose.position.set(0, -0.005, 0.172);
   const moustache = box(0.18, 0.045, 0.03, hair);
   moustache.position.set(0, -0.08, 0.18);
   const smile = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 4, 8, 2), dark);
