@@ -127,7 +127,7 @@ export const questionPool: Round[] = [
     ranger: {
       prompt: DEFEND,
       options: ranked(
-        'Hold the release, fix the vulnerability and retest with [PTT].',
+        'Hold the release, fix the vulnerability and retest with the Penetration Testing Team.',
         'Advise Devs to Fix before releasing with the vulnerability.',
         'Assess exposure and propose temporary protections for review.',
       ),
