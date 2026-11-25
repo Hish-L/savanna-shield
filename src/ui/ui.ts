@@ -211,6 +211,8 @@ export class UI {
     // Cards tuck up to the top so the map reveal is unobstructed.
     const hud = this.root.querySelector('.hud');
     hud?.classList.add('revealing');
+    // Teams can both lock in before reading time ends, which stops the timer while the cards are still hidden.
+    this.timer(0);
     // Either side missed the best answer, so its card shows a second line (narrow screens need the room).
     hud?.classList.toggle('show-best', (['ranger', 'predator'] as const).some((s) => result[s] !== bestOption(round[s])));
     for (const side of ['ranger', 'predator'] as const) {
