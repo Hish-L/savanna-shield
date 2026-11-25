@@ -426,9 +426,10 @@ kbd {
 }
 
 /* ---------- Team Battle (big screen) ---------- */
-/* Answers live on the phones; the big screen only shows them on the reveal. */
-.hud.teams .card:not(.revealed) .opt { display: none; }
-/* With no answer buttons, the status stamp sits under the prompt instead of over it. */
+/* Teams answer on their phones; the big screen shows the options readable but never marks a pick before the reveal. */
+.hud.teams .card.waiting .opt { opacity: 1; }
+.hud.teams .card.ai.waiting .opt span { filter: none; }
+/* The status stamp sits under the answers instead of over them. */
 .hud.teams .card .lock { position: static; }
 .away-badge { justify-self: start; padding: 0.2rem 0.7rem; border-radius: 999px; background: var(--wbc-red); color: #fff; font-weight: 800; font-size: 0.85rem; animation: pulse 1.6s infinite; }
 .banner .votes { display: flex; justify-content: center; gap: 1rem; margin: 0.6rem 0 0; font-weight: 800; }
