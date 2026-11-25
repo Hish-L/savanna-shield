@@ -303,6 +303,7 @@ export class UI {
           </div>
         </div>
         <p class="waiting">${waitingFor.length ? `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
+        <a class="link-button join-code" href="play.html">📱 Join a game with a code</a>
         <button class="link-button back"><kbd>Esc</kbd> Back</button>
       </div>`;
     this.root.querySelector<HTMLButtonElement>('.back')!.onclick = onBack;
