@@ -48,7 +48,7 @@ export function attachHub(server: Server): void {
         if (data.role === 'screen') {
           role = 'screen';
           // A refreshed big screen replaces the old one.
-          screen?.close();
+          screen?.close(1000, 'replaced');
           screen = ws;
           for (const phoneId of phones.keys()) toScreen({ joined: phoneId });
         } else if (data.role === 'phone') {

@@ -64,8 +64,10 @@ export class HubClient {
         }
         this.onEvent(event);
       };
-      ws.onclose = () => {
+      ws.onclose = (e) => {
         clearTimeout(timer);
+        // Another big screen took over the room; reconnecting would just kick it off in turn, forever.
+        if (e.reason === 'replaced') this.closed = true;
         if (!opened) reject(new Error(NO_HUB));
         // After the first connection, keep retrying (e.g. the booth server restarted). Phones keep their seats.
         if (this.connected && !this.closed) this.retry = window.setTimeout(() => this.open().catch(() => {}), RETRY_MS);
