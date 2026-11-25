@@ -15,6 +15,8 @@ export interface Model {
   neck?: THREE.Object3D;
   /** Armed people: arms and rifle, pivoting at the shoulders. Tilt it back to raise the rifle. */
   aim?: THREE.Object3D;
+  /** The Ranger's right arm, pivoting at the shoulder: swing it up and out to wave. */
+  wave?: THREE.Object3D;
 }
 
 const SHOULDER_Y = 1.65;
@@ -494,7 +496,7 @@ export function ranger(slung = false): Model {
     if (o instanceof THREE.Mesh) o.castShadow = true;
   });
   root.scale.setScalar(1.15);
-  return { root, legs, head };
+  return { root, legs, head, wave: arms[0] };
 }
 
 /** Just a hippo's head, origin at the waterline: it wallows in the pond with a big grin. */

@@ -70,9 +70,13 @@ export class Watchtower {
   private alertLevel = 0;
   private alertHold = 0;
   private focus: THREE.Vector3 | null = null;
-  /** Intro tour: stop the sweep so the camera can hold on the Chief's face. */
+  /** Intro tour: stop the sweep so the camera can hold on the Chief's face, and he waves hello. */
   still = false;
   private readonly chief: THREE.Object3D;
+  private readonly arm: THREE.Object3D;
+  /** How far the waving arm is raised (0 = hanging, 1 = up), and the clock for its swing. */
+  private raise = 0;
+  private waveTime = 0;
 
   constructor(position: THREE.Vector3) {
     this.group.position.copy(position);
@@ -121,7 +125,9 @@ export class Watchtower {
     }
 
     // The Chief Ranger stands at the back of the platform behind a searchlight on a short post.
-    const chief = (this.chief = ranger(true).root);
+    const model = ranger(true);
+    const chief = (this.chief = model.root);
+    this.arm = model.wave!;
     chief.scale.multiplyScalar(1.2); // a touch larger than life so he reads from across the reserve
     chief.position.set(0, deckY + 0.11, -0.35);
     const post = stick(new THREE.Vector3(0, deckY + 0.11, 0.55), new THREE.Vector3(0, deckY + 1.15, 0.55), 0.05, poleWood);
@@ -173,6 +179,10 @@ export class Watchtower {
     this.alertHold -= dt;
     if (this.alertHold <= 0) this.alertLevel = damp(this.alertLevel, 0, 0.8, dt);
     if (!this.still) this.angle += dt * (0.35 + this.alertLevel * 1.4);
+    // Wave: the right arm swings up and out to the side and rocks back and forth, then drops back to hang.
+    this.raise = damp(this.raise, this.still ? 1 : 0, 5, dt);
+    this.waveTime += dt;
+    this.arm.rotation.z = -0.08 - this.raise * (2.5 + Math.sin(this.waveTime * 9) * 0.35);
     const sweep = new THREE.Vector3(Math.cos(this.angle) * 11, 0, Math.sin(this.angle) * 11);
     const world = this.focus && this.alertLevel > 0.3 ? this.focus : sweep;
     const local = this.group.worldToLocal(world.clone());
