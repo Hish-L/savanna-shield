@@ -218,39 +218,46 @@ kbd {
 }
 .card:is(.locked, .revealed) .status-chip { display: none; }
 
-/* Reveal: cards keep their width but move to the top and collapse to the pick, the best answer and points. */
+/* Reveal: cards shrink into compact strips at the top corners, showing just the pick, the best answer and points,
+   so the camera's close-up of the event stays in view. */
 .card { transition: top 0.45s cubic-bezier(0.3, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.3, 1.2, 0.6, 1); }
-.card.revealed { top: 1.2rem; transform: none; gap: 0.7rem; }
+.card.revealed { top: 0.8rem; transform: none; width: 19rem; gap: 0.45rem; padding: 0.7rem; }
 .card.revealed .timer, .card.revealed .prompt, .card.revealed .lock, .card.revealed .opt:not(.chosen, .best) { display: none; }
-.card.revealed .opt:is(.chosen, .best) { padding: 0.75rem 0.9rem; font-size: 1.2rem; line-height: 1.25; }
-.card.revealed .opt:is(.chosen, .best) em { font-size: 1.5rem; }
-.card.revealed .timeout { font-size: 1.2rem; }
+.card.revealed .who .avatar { width: 2.6rem; height: 2.6rem; }
+.card.revealed .who b { font-size: 1rem; }
+.card.revealed .who small { display: none; }
+.card.revealed .who .pts { min-width: 2.6rem; font-size: 1.4rem; }
+.card.revealed .opt:is(.chosen, .best) { padding: 0.45rem 0.7rem; font-size: 0.95rem; line-height: 1.25; }
+.card.revealed .opt:is(.chosen, .best) em { font-size: 1.1rem; }
+.card.revealed .timeout { font-size: 0.95rem; }
 /* The pick comes first, then the best answer under it when they differ. */
-.card.revealed .opt.best:not(.chosen) { order: 1; margin-top: 0.8rem; }
-/* The chip hangs ~0.8rem into the answer, so push the text down below it. */
-.card.revealed .opt.best { padding-top: 1.3rem; }
+.card.revealed .opt.best:not(.chosen) { order: 1; margin-top: 0.6rem; }
+/* The chip hangs into the answer, so push the text down below it. */
+.card.revealed .opt.best { padding-top: 1rem; }
+.card.revealed .opt.best::after { top: -0.8rem; padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+/* The question shrinks to a slim panel between the two cards, keeping the scenario in view. */
+.revealing .topbar { top: 0.8rem; width: min(30rem, calc(100vw - 44rem)); min-width: 16rem; padding: 0.9rem 1rem 0.6rem; }
+.revealing .topbar .read-hint { display: none; }
+.revealing .topbar .detail { margin-top: 0.3rem; font-size: 1rem; line-height: 1.35; }
+.revealing .topbar .stage b { font-size: 1.1rem; }
+.revealing .topbar .stage small { top: -0.8rem; font-size: 0.75rem; }
 .hud > .brand { transition: opacity 0.2s; }
 .revealing > .brand { opacity: 0; }
 
 .banner {
-  position: absolute; left: 50%; bottom: 1.5rem; width: min(48rem, 94vw); transform: translate(-50%, 1rem) scale(0.9); opacity: 0;
-  padding: 1rem 1.3rem; border-radius: 1.2rem; text-align: center; background: var(--panel); border: 0.22rem solid var(--tone, #fff);
+  position: absolute; left: 50%; bottom: 1rem; width: min(36rem, 94vw); transform: translate(-50%, 1rem) scale(0.9); opacity: 0;
+  padding: 0.6rem 1rem; border-radius: 1.2rem; text-align: center; background: var(--panel); border: 0.22rem solid var(--tone, #fff);
   box-shadow: var(--sticker); transition: opacity 0.2s, transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1);
 }
 .banner.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .banner b {
-  display: block; font-size: 2.6rem; font-weight: 900; text-transform: uppercase; color: var(--tone);
+  display: block; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; color: var(--tone);
   -webkit-text-stroke: 0.04em var(--wbc-navy-deep); paint-order: stroke fill; text-shadow: 0 0.06em 0 var(--wbc-navy-deep);
 }
-.banner p { margin: 0.4rem 0 0; font-size: 1.4rem; font-weight: 700; line-height: 1.35; }
-/* The lesson: what the defenders did and why, then the best course of action highlighted. */
-.banner .tip { margin-top: 0.7rem; padding: 0.6rem 0.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.1); color: var(--best); font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-/* The action itself reads as plain text on its own line, so long answers stay easy to read. */
-.banner .tip strong { display: block; margin-top: 0.2rem; color: #fff; font-size: 1.4rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
-.banner .next { margin-top: 0.7rem; }
+.banner p { margin: 0.3rem 0 0; font-size: 1.05rem; font-weight: 700; line-height: 1.35; }
+.banner .next { margin-top: 0.4rem; }
 .banner.blocked { --tone: #5fe3ff; }
 .banner.breach { --tone: #ff7a1a; animation: shake 0.4s; }
-.banner.fizzle { --tone: #fff; }
 
 /* ---------- room code (Play Together lobby) ---------- */
 .room-code {

@@ -16,8 +16,12 @@ describe('resolveRound', () => {
     expect(resolveRound(track, ransomware)).toMatchObject({ blocked: false, breached: true, predatorPoints: 4, rangerPoints: 1 });
   });
 
-  it('gives nothing to a side that timed out, and the attack still lands', () => {
+  it('gives nothing to a side that timed out', () => {
     expect(resolveRound(null, probe)).toMatchObject({ blocked: false, breached: true, predatorPoints: 1, rangerPoints: 0 });
-    expect(resolveRound(escalate, null)).toMatchObject({ blocked: false, breached: false, predatorPoints: 0, rangerPoints: 4 });
+    expect(resolveRound(escalate, null)).toMatchObject({ blocked: true, breached: false, predatorPoints: 0, rangerPoints: 4 });
+  });
+
+  it('counts a round where neither side acts as a raid', () => {
+    expect(resolveRound(null, null)).toMatchObject({ blocked: false, breached: true, predatorPoints: 0, rangerPoints: 0 });
   });
 });

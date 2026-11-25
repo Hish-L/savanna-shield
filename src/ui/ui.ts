@@ -174,7 +174,7 @@ export class UI {
       <div class="hud reading ${mode === 'teams' ? 'teams' : ''} ${localSide(mode) ? 'one-player' : 'shared'}">
         ${BRAND}
         <header class="topbar">
-          <div class="stage"><small>Question ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
+          <div class="stage"><small>Scenario ${index + 1} / ${scenario.rounds.length} · ${esc(round.stage)}</small><b>${esc(round.situation)}</b><p class="detail">${esc(round.detail)}</p></div>
           <p class="read-hint" hidden></p>
         </header>
         ${card('ranger', 'ranger', 'Chief Ranger', DEFENDER_TITLE)}
@@ -192,7 +192,7 @@ export class UI {
       fill.classList.toggle('urgent', fraction < 0.35);
     });
     this.root.querySelector('.hud')?.classList.toggle('reading', readingLeft > 0);
-    const text = readingLeft > 0 ? `Read the question · answers in ${Math.ceil(readingLeft)}s` : '';
+    const text = readingLeft > 0 ? `Answer in ${Math.ceil(readingLeft)}…` : '';
     this.root.querySelectorAll<HTMLElement>('.topbar .read-hint').forEach((hint) => {
       if (hint.textContent !== text) hint.textContent = text;
       hint.hidden = !text;
@@ -228,15 +228,12 @@ export class UI {
       card.querySelector('.pts')!.textContent = String(totals[side]);
       if (!chosen) card.querySelector('.prompt')!.insertAdjacentHTML('afterend', `<div class="timeout">⏱ Too slow, 0 points</div>`);
     }
-    const [kind, label] = result.blocked
-      ? ['blocked', '🛡️ Blocked!']
-      : result.breached
-        ? ['breach', '⚠️ Breach!']
-        : ['fizzle', result.predator ? 'Attack fizzled' : 'Predator froze'];
+    const [kind, label] = result.blocked ? ['blocked', '🛡️ Watering hole defended!'] : ['breach', '⚠️ Watering hole raided!'];
     const banner = this.root.querySelector('.banner')!;
     banner.className = `banner show ${kind}`;
-    const { why, tip } = lessonFor(round, result);
-    banner.innerHTML = `<b>${label}</b>${lessonHtml(why, 'why')}${tip ? lessonHtml(tip, 'tip') : ''}${round.note ? `<p class="why">${esc(round.note)}</p>` : ''}`;
+    // The best defence already shows on the Ranger card, so the banner keeps to the verdict and why.
+    const { why } = lessonFor(round, result);
+    banner.innerHTML = `<b>${label}</b>${lessonHtml(why, 'why')}${round.note ? `<p class="why">${esc(round.note)}</p>` : ''}`;
   }
 
   /**

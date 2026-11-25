@@ -25,5 +25,6 @@ describe('lessonFor', () => {
   it('covers timeouts', () => {
     expect(lessonFor(round, resolveRound(null, byScore('predator', 2))).why.lead).toBe('Defenders were too slow.');
     expect(lessonFor(round, resolveRound(byScore('ranger', 4), null)).why.lead).toBe('The attacker froze.');
+    expect(lessonFor(round, resolveRound(null, null)).why.lead).toBe('Defenders were too slow.');
   });
 });

@@ -14,10 +14,10 @@ export interface LessonLine {
  */
 export function lessonFor(round: Round, r: RoundResult): { why: LessonLine; tip: LessonLine } {
   const best = bestOption(round.ranger);
-  const why: LessonLine = !r.predator
-    ? { lead: 'The attacker froze.' }
-    : !r.ranger
-      ? { lead: 'Defenders were too slow.' }
+  const why: LessonLine = !r.ranger
+    ? { lead: 'Defenders were too slow.' }
+    : !r.predator
+      ? { lead: 'The attacker froze.' }
       : r.blocked
         ? { lead: 'Strong enough to stop the attack.' }
         : { lead: 'Not strong enough to stop the attack.' };

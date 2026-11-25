@@ -13,7 +13,7 @@ export type PhoneMsg =
   | { t: 'next'; round: number }
   | { t: 'rematch' };
 
-export type Outcome = 'blocked' | 'breach' | 'fizzle';
+export type Outcome = 'blocked' | 'breach';
 
 /** Screen → phone: everything the phone shows. */
 export type PhoneView =

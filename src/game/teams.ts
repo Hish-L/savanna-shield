@@ -24,7 +24,7 @@ const isAbort = (err: unknown) => err instanceof DOMException && err.name === 'A
 const ROOM_KEY = 'savannah-shield-room';
 
 const other = (side: Side): Side => (side === 'ranger' ? 'predator' : 'ranger');
-const outcome = (r: RoundResult): Outcome => (r.blocked ? 'blocked' : r.breached ? 'breach' : 'fizzle');
+const outcome = (r: RoundResult): Outcome => (r.blocked ? 'blocked' : 'breach');
 
 /** What the phones should be showing right now. */
 type Phase =

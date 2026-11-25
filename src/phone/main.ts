@@ -138,7 +138,7 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
   const locked = q.locked !== null;
   draw(
     q.side,
-    `<div class="col"><p class="stage">Question ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
+    `<div class="col"><p class="stage">Scenario ${q.round + 1} / ${q.total} · ${esc(q.stage)}</p>
      <p class="situation"><b>${esc(q.situation)}</b> ${esc(q.detail)}</p>
      <div class="timer"><div class="fill"></div></div>
      <p class="read-hint" hidden></p></div>
@@ -175,7 +175,7 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
     fill.classList.toggle('urgent', fraction < 0.35);
     const reading = left > answerMs;
     hint.hidden = !reading;
-    if (reading) hint.textContent = `Read the question · answers in ${Math.ceil((left - answerMs) / 1000)}s`;
+    if (reading) hint.textContent = `Answer in ${Math.ceil((left - answerMs) / 1000)}…`;
     if (left > 0) frame = requestAnimationFrame(tick);
     else if (!app.querySelector('.options.locked')) {
       buttons.forEach((x) => (x.disabled = true));
@@ -188,7 +188,7 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
 const line = (l: LessonLine | null) => (l ? `<p>${esc(l.lead)}${l.action ? ` <strong>${esc(l.action)}</strong>` : ''}</p>` : '');
 
 function result(r: Extract<PhoneView, { v: 'result' }>): void {
-  const headline = { blocked: '🛡️ Blocked!', breach: '⚠️ Breach!', fizzle: 'Attack fizzled' }[r.outcome];
+  const headline = { blocked: '🛡️ Watering hole defended!', breach: '⚠️ Watering hole raided!' }[r.outcome];
   const wasBest = r.yourPick === r.best;
   draw(
     r.side,
