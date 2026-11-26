@@ -426,6 +426,33 @@ kbd {
 }
 
 /* ---------- Team Battle (big screen) ---------- */
+.team-setup { gap: 0.7rem; }
+.team-setup .eyebrow { margin: 0.5rem 0 0; color: var(--best); font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; }
+.phone-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.3rem; width: min(48rem, 100%); margin: 0.5rem 0; }
+.phone-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 1.1rem 1.8rem;
+  border: 0.18rem solid #77749c; border-radius: 1.5rem; background: var(--panel); box-shadow: var(--sticker);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.phone-choice:hover { transform: translateY(-0.2rem); border-color: #fff; }
+.phone-choice[aria-pressed='true'] { border-color: var(--best); background: #353066; outline: 0.16rem solid var(--best); outline-offset: 0.2rem; }
+.phone-choice:focus-visible, .setup-continue:focus-visible { outline: 0.2rem solid #fff; outline-offset: 0.4rem; }
+.phone-choice > b { font-size: 2rem; font-weight: 900; }
+.phone-choice > span:not(.device-art) { color: var(--best); font-size: 1.2rem; font-weight: 800; }
+.phone-choice small { max-width: 19rem; font-size: 1rem; line-height: 1.5; opacity: 0.85; }
+.device-art { display: flex; justify-content: center; gap: 0.5rem; height: 5.2rem; margin-bottom: 0.3rem; }
+.device-art i { display: flex; align-items: center; justify-content: center; width: 3rem; border: 0.22rem solid #fff; border-radius: 0.6rem; background: var(--wbc-red); font-size: 1.1rem; font-weight: 900; font-style: normal; box-shadow: 0 0.3rem 0 #110f33; }
+.device-art i:last-child { background: #ffc72c; color: var(--wbc-navy-deep); }
+.shared-device { align-items: center; }
+.shared-device i { width: 6.3rem; height: 3.5rem; overflow: hidden; }
+.shared-device i span { display: grid; place-items: center; width: 50%; height: 100%; }
+.shared-device i span:first-child { background: var(--wbc-red); color: white; border-right: 0.15rem solid white; }
+.team-setup .setup-continue { width: 20rem; max-width: 100%; }
+.setup-note { margin: 0; opacity: 0.7; font-size: 0.9rem; }
+@media (max-width: 540px) {
+  .phone-choices { gap: 0.8rem; }
+  .phone-choice { padding: 1rem 0.8rem; }
+}
 /* Teams answer on their phones; the big screen shows the options readable but never marks a pick before the reveal. */
 .hud.teams .card.waiting .opt { opacity: 1; }
 .hud.teams .card.ai.waiting .opt span { filter: none; }

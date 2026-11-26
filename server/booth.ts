@@ -41,6 +41,6 @@ const server = createServer((req, res) => {
 attachHub(server);
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\nSavannah Shield booth is running.`);
-  console.log(`  Big screen: http://localhost:${PORT}  (press 5 for Team Battle)`);
+  console.log(`  Big screen: http://localhost:${PORT}  (press 4 for Play Together)`);
   console.log(`  Phones:     http://${lanAddress()}:${PORT}/play  (or scan the QR code)\n`);
 });

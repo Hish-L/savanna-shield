@@ -6,6 +6,7 @@ import { lessonFor, type LessonLine } from '../game/lesson';
 import { bestOption, type RoundResult } from '../game/scoring';
 import type { Mode, Option, Round, Scenario, Side } from '../game/types';
 import type { Portrait } from '../scene/portraits';
+import type { PhoneCount } from '../net/teams-protocol';
 import './styles.css';
 
 export const KEYS: Record<Side, string[]> = { ranger: ['A', 'S', 'D'], predator: ['J', 'K', 'L'] };
@@ -69,7 +70,7 @@ export class UI {
       { mode: 'duel', key: '1', label: 'Ranger vs Predator', sub: '2 players, head to head' },
       { mode: 'solo-ranger', key: '2', label: 'Play the Ranger', sub: 'Defend against the computer' },
       { mode: 'solo-predator', key: '3', label: 'Play the Predator', sub: 'Think like an attacker' },
-      { mode: 'teams', key: '4', label: 'Play Together', sub: 'Teams or friends, on phones' },
+      { mode: 'teams', key: '4', label: 'Play Together', sub: 'Teams or friends, on 1 or 2 phones' },
     ];
     this.root.innerHTML = `
       <div class="screen title">
@@ -277,8 +278,55 @@ export class UI {
     if (away) card.querySelector('.who')?.insertAdjacentHTML('afterend', '<div class="away-badge">📵 Phone reconnecting…</div>');
   }
 
-  /** Team Battle waiting room: QR code for the phones, the room code (cloud relay only) and the two team slots. */
-  teamLobby(playUrl: string, qrSvg: string, code: string | null, slots: Record<Side, SlotState>, onBack: () => void): void {
+  /** Choose the controller layout before opening a room. */
+  teamSetup(): Promise<PhoneCount | null> {
+    let phones: PhoneCount = sessionStorage.getItem('savannah-shield-phones') === '1' ? 1 : 2;
+    this.root.innerHTML = `
+      <div class="screen team-setup">
+        ${BRAND}
+        <p class="eyebrow">Play Together · Setup</p>
+        <h2>How many phones?</h2>
+        <p class="role">The TV is your arena. Choose how you'll play.</p>
+        <div class="phone-choices" role="group" aria-label="Number of phones">
+          <button class="phone-choice" data-phones="1" aria-pressed="false">
+            <span class="device-art shared-device" aria-hidden="true"><i><span>R</span><span>P</span></i></span>
+            <b>1 phone</b><span>Share the action</span><small>Ranger and Predator answer side by side on one phone.</small>
+          </button>
+          <button class="phone-choice" data-phones="2" aria-pressed="false">
+            <span class="device-art" aria-hidden="true"><i>R</i><i>P</i></span>
+            <b>2 phones</b><span>A phone for each team</span><small>Each team gets its own answers and private controls.</small>
+          </button>
+        </div>
+        <button class="mode setup-continue"><b>Continue</b></button>
+        <p class="setup-note">One big screen. Two sides. One watering hole.</p>
+        <button class="link-button back"><kbd>Esc</kbd> Back</button>
+      </div>`;
+    const choices = this.root.querySelectorAll<HTMLButtonElement>('.phone-choice');
+    const select = (count: PhoneCount) => {
+      phones = count;
+      choices.forEach((button) => button.setAttribute('aria-pressed', String(Number(button.dataset.phones) === phones)));
+    };
+    select(phones);
+    return new Promise((resolve) => {
+      const done = (value: PhoneCount | null) => {
+        window.removeEventListener('keydown', onKey);
+        if (value) sessionStorage.setItem('savannah-shield-phones', String(value));
+        resolve(value);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') done(null);
+        else if (e.key === '1' || e.key === '2') select(Number(e.key) as PhoneCount);
+        else if (e.key === 'Enter') done(phones);
+      };
+      choices.forEach((button) => button.onclick = () => select(Number(button.dataset.phones) as PhoneCount));
+      this.root.querySelector<HTMLButtonElement>('.setup-continue')!.onclick = () => done(phones);
+      this.root.querySelector<HTMLButtonElement>('.back')!.onclick = () => done(null);
+      window.addEventListener('keydown', onKey);
+    });
+  }
+
+  /** Team Battle waiting room: QR code, room code and the two team slots. */
+  teamLobby(playUrl: string, qrSvg: string, code: string | null, slots: Record<Side, SlotState>, phones: PhoneCount, onBack: () => void): void {
     const label: Record<SlotState, string> = { open: 'Scan to join', joined: 'Ready', away: 'Reconnecting…' };
     const slot = (side: Side, name: string, who: Portrait) =>
       `<div class="slot ${side} ${slots[side]}">${this.avatar(who)}<b>${name}</b><small>${label[slots[side]]}</small></div>`;
@@ -287,7 +335,7 @@ export class UI {
       <div class="screen team-lobby">
         ${BRAND}
         <h2>Play Together</h2>
-        <p class="role">One phone per team, or one each for 2 players anywhere. Answers stay hidden until the reveal.</p>
+        <p class="role">${phones === 1 ? '1 shared phone · Scan once to play both sides. Turn it sideways for more room.' : '2 phones · Scan on each phone, then pick a side.'}</p>
         <div class="join-row">
           <div class="qr">${qrSvg}</div>
           <div class="join-info">
@@ -302,9 +350,9 @@ export class UI {
             }
           </div>
         </div>
-        <p class="waiting">${waitingFor.length ? `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
+        <p class="waiting">${waitingFor.length ? phones === 1 ? 'Waiting for your shared phone…' : `Waiting for the ${waitingFor.map((s) => (s === 'ranger' ? 'Ranger' : 'Predator')).join(' and ')} team…` : 'Starting…'}</p>
         <a class="link-button join-code" href="play.html">📱 Join a game with a code</a>
-        <button class="link-button back"><kbd>Esc</kbd> Back</button>
+        <button class="link-button back"><kbd>Esc</kbd> Change phones</button>
       </div>`;
     this.root.querySelector<HTMLButtonElement>('.back')!.onclick = onBack;
   }

@@ -1,7 +1,7 @@
 import type { LessonLine } from '../game/lesson';
 import type { Side } from '../game/types';
 import { CODE_LENGTH, normalizeCode, RELAY, relayUrl } from '../net/hub';
-import type { PhoneMsg, PhoneView } from '../net/teams-protocol';
+import type { PhoneCount, PhoneMsg, PhoneView } from '../net/teams-protocol';
 import './phone.css';
 
 // Team Battle controller. The big screen sends a full PhoneView whenever anything changes; this page
@@ -89,6 +89,8 @@ function status(message: string, side?: Side): void {
 function draw(side: Side | undefined, body: string): void {
   cancelAnimationFrame(frame);
   document.body.dataset.side = side ?? '';
+  document.body.classList.remove('shared-phone');
+  document.documentElement.classList.remove('shared-controller');
   app.innerHTML = `
     <header>
       <span class="title">Savannah <b>Shield</b></span>
@@ -102,7 +104,9 @@ function render(): void {
   if (!view) return;
   switch (view.v) {
     case 'pick-side':
-      return pickSide(view.taken);
+      return pickSide(view.taken, view.phones);
+    case 'shared':
+      return shared(view);
     case 'waiting':
       return status(view.message, view.side);
     case 'question':
@@ -114,7 +118,23 @@ function render(): void {
   }
 }
 
-function pickSide(taken: Side[]): void {
+function pickSide(taken: Side[], phones: PhoneCount): void {
+  if (phones === 1) {
+    draw(undefined, `<div class="shared-welcome">
+      <span class="setup-kicker">ONE PHONE · TWO TEAMS</span>
+      <h1>Share the action</h1>
+      <div class="shared-preview" aria-hidden="true"><span>🛡️<b>Ranger</b></span><span>🐾<b>Predator</b></span></div>
+      <p class="message">Your answers sit side by side.<br>Each team taps its own choice.</p>
+      <p class="message small">Turn your phone sideways for more room.</p>
+      <button class="vote" ${taken.length ? 'disabled' : ''}>${taken.length ? 'Phone already connected' : 'Play both sides'}</button>
+      </div>`);
+    app.querySelector<HTMLButtonElement>('button.vote')!.onclick = (e) => {
+      (e.currentTarget as HTMLButtonElement).disabled = true;
+      requestWakeLock();
+      send({ t: 'claim', side: 'both' });
+    };
+    return;
+  }
   const button = (side: Side, sub: string) =>
     `<button class="side ${side}" data-side="${side}" ${taken.includes(side) ? 'disabled' : ''}><b>${NAMES[side]}</b><small>${taken.includes(side) ? 'Taken' : sub}</small></button>`;
   draw(
@@ -163,6 +183,15 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
       }),
   );
 
+  startTimer(q, () => {
+    if (!app.querySelector('.options.locked')) {
+      buttons.forEach((x) => (x.disabled = true));
+      app.querySelector('.note')!.textContent = "Time's up!";
+    }
+  });
+}
+
+function startTimer(q: Extract<PhoneView, { v: 'question' }>, onEnd: () => void): void {
   const fill = app.querySelector<HTMLElement>('.timer .fill')!;
   const hint = app.querySelector<HTMLElement>('.read-hint')!;
   const end = performance.now() + q.endsInMs;
@@ -177,12 +206,76 @@ function question(q: Extract<PhoneView, { v: 'question' }>): void {
     hint.hidden = !reading;
     if (reading) hint.textContent = `Answer in ${Math.ceil((left - answerMs) / 1000)}…`;
     if (left > 0) frame = requestAnimationFrame(tick);
-    else if (!app.querySelector('.options.locked')) {
-      buttons.forEach((x) => (x.disabled = true));
-      app.querySelector('.note')!.textContent = "Time's up!";
-    }
+    else onEnd();
   };
   tick();
+}
+
+/** One shared scenario and two independent controllers, kept side by side in either orientation. */
+function shared(v: Extract<PhoneView, { v: 'shared' }>): void {
+  const r = v.ranger;
+  const p = v.predator;
+  const teamHeader = (side: Side) => `<div class="split-heading"><span aria-hidden="true">${side === 'ranger' ? '🛡️' : '🐾'}</span><h2>${NAMES[side]}</h2><small>${side === 'ranger' ? 'DEFEND' : 'ATTACK'}</small></div>`;
+  const panel = (side: Side, body: string) => `<section class="split-team ${side}" data-team="${side}" aria-label="${NAMES[side]} controls">${teamHeader(side)}${body}</section>`;
+  const layout = (intro: string, left: string, right: string, footer = '') => {
+    draw(undefined, `${intro}<div class="split-controls">${panel('ranger', left)}${panel('predator', right)}</div>${footer}`);
+    document.body.classList.add('shared-phone');
+    document.documentElement.classList.add('shared-controller');
+    app.querySelector('header')!.insertAdjacentHTML('beforeend', '<span class="shared-badge">1 phone · 2 teams</span>');
+  };
+  if (r.v === 'question' && p.v === 'question') {
+    const answers = (q: typeof r) => `<p class="split-prompt">${esc(q.prompt)}</p>
+      <div class="options ${q.locked !== null ? 'locked' : ''}">${q.options.map((text, i) =>
+        `<button class="opt ${q.locked === i ? 'chosen' : ''}" data-i="${i}" ${q.locked !== null ? 'disabled' : ''}><kbd>${LETTERS[i]}</kbd><span>${esc(text)}</span></button>`).join('')}</div>
+      <p class="note" aria-live="polite">${q.locked !== null ? '✓ Locked in' : 'Tap your answer'}</p>`;
+    layout(`<div class="shared-scenario"><p class="stage">Scenario ${r.round + 1} / ${r.total} · ${esc(r.stage)}</p>
+      <p class="situation"><b>${esc(r.situation)}</b> ${esc(r.detail)}</p>
+      <div class="timer"><div class="fill"></div></div><p class="read-hint" hidden></p></div>`, answers(r), answers(p));
+    app.querySelectorAll<HTMLElement>('.split-team').forEach((team) => {
+      const side = team.dataset.team as Side;
+      const buttons = team.querySelectorAll<HTMLButtonElement>('button.opt');
+      buttons.forEach((button) => button.onclick = () => {
+        buttons.forEach((b) => b.disabled = true);
+        button.classList.add('chosen');
+        team.querySelector('.options')!.classList.add('locked');
+        team.querySelector('.note')!.textContent = '✓ Locked in';
+        send({ t: 'pick', side, round: r.round, index: Number(button.dataset.i) });
+      });
+    });
+    startTimer(r, () => {
+      app.querySelectorAll<HTMLElement>('.split-team').forEach((team) => {
+        if (team.querySelector('.options.locked')) return;
+        team.querySelectorAll<HTMLButtonElement>('button.opt').forEach((b) => b.disabled = true);
+        team.querySelector('.note')!.textContent = "Time's up!";
+      });
+    });
+  } else if (r.v === 'result' && p.v === 'result') {
+    const pick = (q: typeof r) => `<div class="pick ${q.yourPick ? '' : 'missed'}"><small>Your answer</small>
+      <b>${q.yourPick ? esc(q.yourPick) : '⏱ Too slow'}</b><em>+${q.points}</em></div>
+      ${q.yourPick === q.best ? '<p class="best-tag">★ Best answer</p>' : `<div class="pick best"><small>Best answer</small><b>${esc(q.best)}</b></div>`}
+      ${voteButton(q.youTappedNext, q.otherTappedNext, 'Next')}`;
+    layout(`<h1 class="outcome ${r.outcome}">${r.outcome === 'blocked' ? '🛡️ Watering hole defended!' : '⚠️ Watering hole raided!'}</h1>${scoreline(r.totals)}`,
+      pick(r), pick(p), `<div class="lesson">${line(r.lesson.why)}${line(r.lesson.tip)}</div>`);
+    bindSharedVote({ t: 'next', round: r.round });
+  } else if (r.v === 'final' && p.v === 'final') {
+    const teamResult = (side: Side) => `<p class="split-total">${r.totals[side]}<small>POINTS</small></p>
+      ${voteButton(v[side].v === 'final' && v[side].youTappedRematch, v[side].v === 'final' && v[side].otherTappedRematch, 'Rematch')}`;
+    layout(`<p class="setup-kicker">GAME COMPLETE</p><h1 class="outcome win">${r.winner === 'draw' ? 'Stalemate!' : `${NAMES[r.winner]} wins! 🏆`}</h1>`,
+      teamResult('ranger'), teamResult('predator'));
+    bindSharedVote({ t: 'rematch' });
+  } else {
+    layout(`<h1>Ready, together.</h1><p class="message">${r.v === 'waiting' ? esc(r.message) : 'Look at the big screen.'}</p>`,
+      '<p class="message">Your defence starts here.</p>', '<p class="message">Plan your next move.</p>');
+  }
+}
+
+function bindSharedVote(msg: { t: 'next'; round: number } | { t: 'rematch' }): void {
+  app.querySelectorAll<HTMLElement>('.split-team').forEach((team) => {
+    team.querySelector<HTMLButtonElement>('button.vote')?.addEventListener('click', (e) => {
+      (e.currentTarget as HTMLButtonElement).disabled = true;
+      send({ ...msg, side: team.dataset.team as Side });
+    });
+  });
 }
 
 const line = (l: LessonLine | null) => (l ? `<p>${esc(l.lead)}${l.action ? ` <strong>${esc(l.action)}</strong>` : ''}</p>` : '');

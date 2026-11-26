@@ -19,13 +19,13 @@ Each question starts with reading time: the words in its title and description a
 
 ## Play Together
 
-One screen runs the game and shows the savanna. Each side plays on a phone: one phone per team at the booth, or one each for two players anywhere. The phones show their own question, the 3 answers and the timer, then their result after each reveal. The answers only appear on the big screen at the reveal.
+One screen runs the game and shows the savanna. Choose **1 phone** to share a split-screen controller, or **2 phones** to give each team its own controller. Both setups work online and at the offline booth. The phones show the question, 3 answers per side and the timer, then the results after each reveal.
 
-1. Open the game on the big screen (or the host's laptop) and press `4`. It shows a QR code and a 4-letter room code.
-2. Each team scans the QR code, or opens `…/play.html` and types the code, then picks Ranger or Predator. The game starts once both sides are taken.
-3. After each reveal, both phones tap **Next** to continue. At the end, both tap **Rematch** to play again with the same teams.
+1. Open the game on the TV (or the host's laptop) and press `4`. Select **1 phone** or **2 phones**, then **Continue**. Two phones is the default; your choice is remembered in that TV tab. Use **Change phones** in the lobby to return to setup.
+2. Scan the QR code, or open `…/play.html` and enter the room code (online). With **1 phone**, tap **Play both sides**; Ranger and Predator each get their own answer column, lock and result. Landscape gives more room. With **2 phones**, each phone picks Ranger or Predator as before. The game starts once both sides are taken.
+3. After each reveal, each team taps **Next** in its own controls. At the end, each taps **Rematch** to play again with the same teams. These buttons are side by side on a shared phone.
 
-Operator keys: `Space` moves on without waiting for the phones, and `Esc` ends the game and frees both seats for the next teams (`Esc` again leaves to the title screen). If a phone locks or drops, it rejoins its seat automatically when it comes back, and a refreshed big screen keeps its room code. Any round a phone misses scores 0, like a timeout.
+Operator keys: `Space` moves on without waiting for the phones, and `Esc` ends the game and frees both seats for the next teams (`Esc` again returns to phone setup). If a phone locks or drops, it rejoins its seat automatically when it comes back; a shared phone reclaims both seats. A refreshed big screen keeps its room code and phone-count preference. Any round a phone misses scores 0, like a timeout.
 
 The big-screen browser runs the game (`src/game/teams.ts`). The phones (`play.html`, `src/phone/`) only draw what the screen sends them. Messages pass through a small relay, and nothing else runs on a server:
 

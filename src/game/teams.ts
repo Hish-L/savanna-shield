@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { settings } from '../config';
 import { HubClient, newCode, NO_HUB, RELAY } from '../net/hub';
-import { parsePhoneMsg, type HubEvent, type Outcome, type PhoneMsg, type PhoneView } from '../net/teams-protocol';
+import { parsePhoneMsg, type HubEvent, type Outcome, type PhoneCount, type PhoneMsg, type PhoneView, type TeamView } from '../net/teams-protocol';
 import type { Savanna } from '../scene/world';
 import type { Played, Totals, UI } from '../ui/ui';
 import { lessonFor } from './lesson';
@@ -36,6 +36,14 @@ type Phase =
 
 /** Runs Team Battle until the operator presses Esc on the lobby. */
 export async function playTeams(world: Savanna, ui: UI): Promise<void> {
+  for (;;) {
+    const phones = await ui.teamSetup();
+    if (!phones) return;
+    await runTeams(world, ui, phones);
+  }
+}
+
+async function runTeams(world: Savanna, ui: UI, phones: PhoneCount): Promise<void> {
   const room = sessionStorage.getItem(ROOM_KEY) ?? newCode();
   sessionStorage.setItem(ROOM_KEY, room);
   let hub: HubClient;
@@ -50,7 +58,7 @@ export async function playTeams(world: Savanna, ui: UI): Promise<void> {
     return;
   }
   const qr = await QRCode.toString(playUrl, { type: 'svg', margin: 1, color: { dark: '#1f1c4f', light: '#ffffff' } });
-  const battle = new TeamBattle(hub, world, ui, playUrl, qr, room);
+  const battle = new TeamBattle(hub, world, ui, playUrl, qr, room, phones);
   try {
     await battle.run();
   } finally {
@@ -77,6 +85,7 @@ class TeamBattle {
     private readonly playUrl: string,
     private readonly qr: string,
     private readonly room: string,
+    private readonly phones: PhoneCount,
   ) {
     hub.onEvent = (e) => this.onHub(e);
     hub.onReconnect = () => {
@@ -227,9 +236,10 @@ class TeamBattle {
     if ('joined' in e) {
       this.hub.send(e.joined, { v: 'who' });
     } else if ('left' in e) {
-      const side = this.seats.left(e.left);
-      if (!side) return;
-      if (this.phase.kind === 'lobby') {
+      const sides = this.seats.sidesOf(e.left);
+      this.seats.left(e.left);
+      if (!sides.length) return;
+      if (this.phase.kind === 'lobby') for (const side of sides) {
         this.grace.set(
           side,
           window.setTimeout(() => {
@@ -252,20 +262,26 @@ class TeamBattle {
     if (msg.t === 'hello') {
       const side = this.seats.hello(conn, msg.token);
       if (side) {
-        clearTimeout(this.grace.get(side));
-        this.grace.delete(side);
+        for (const held of this.seats.sidesOf(conn)) {
+          clearTimeout(this.grace.get(held));
+          this.grace.delete(held);
+        }
         this.showSeats();
       }
       this.send(conn);
     } else if (msg.t === 'claim') {
-      if (this.phase.kind === 'lobby' && this.seats.claim(conn, msg.side)) {
+      const claimed = this.phase.kind === 'lobby' && (this.phones === 1
+        ? msg.side === 'both' && this.seats.claimBoth(conn)
+        : msg.side !== 'both' && this.seats.claim(conn, msg.side));
+      if (claimed) {
         this.showSeats();
         this.refreshAll();
         if (this.seats.full()) this.lobbyDone?.(true);
       } else this.send(conn);
     } else {
-      const side = this.seats.sideOf(conn);
-      if (side) this.onTeam?.(side, msg);
+      const held = this.seats.sidesOf(conn);
+      const side = msg.side ?? (held.length === 1 ? held[0] : undefined);
+      if (side && held.includes(side)) this.onTeam?.(side, msg);
     }
   }
 
@@ -273,7 +289,7 @@ class TeamBattle {
   private showSeats(): void {
     if (this.phase.kind === 'lobby') {
       const slot = (side: Side) => (!this.seats.isTaken(side) ? 'open' : this.seats.isAway(side) ? 'away' : 'joined');
-      this.ui.teamLobby(this.playUrl, this.qr, RELAY ? this.room : null, { ranger: slot('ranger'), predator: slot('predator') }, () => this.lobbyDone?.(false));
+      this.ui.teamLobby(this.playUrl, this.qr, RELAY ? this.room : null, { ranger: slot('ranger'), predator: slot('predator') }, this.phones, () => this.lobbyDone?.(false));
     } else {
       for (const side of SIDES) this.ui.seatStatus(side, this.seats.isAway(side));
     }
@@ -284,9 +300,17 @@ class TeamBattle {
     const p = this.phase;
     if (!side) {
       return p.kind === 'lobby'
-        ? { v: 'pick-side', taken: this.seats.taken() }
+        ? { v: 'pick-side', taken: this.seats.taken(), phones: this.phones }
         : { v: 'waiting', message: 'A game is in progress. Hang tight, you can join the next one!' };
     }
+    if (this.seats.sidesOf(conn).length === 2) {
+      return { v: 'shared', ranger: this.teamView('ranger'), predator: this.teamView('predator') };
+    }
+    return this.teamView(side);
+  }
+
+  private teamView(side: Side): TeamView {
+    const p = this.phase;
     switch (p.kind) {
       case 'lobby':
         return { v: 'waiting', side, message: this.seats.full() ? 'Starting…' : `Waiting for the ${NAMES[other(side)]} team to join…` };

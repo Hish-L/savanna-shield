@@ -17,14 +17,23 @@ export class Seats {
   /** Records who a connection is. Returns the side it was re-seated on, if any. */
   hello(conn: number, token: string): Side | null {
     this.tokens.set(conn, token);
+    let first: Side | null = null;
     for (const side of ['ranger', 'predator'] as const) {
       const seat = this.seats[side];
       if (seat?.token === token) {
         seat.conn = conn;
-        return side;
+        first ??= side;
       }
     }
-    return null;
+    return first;
+  }
+
+  /** Atomically claims both teams for a shared phone. */
+  claimBoth(conn: number): boolean {
+    const token = this.tokens.get(conn);
+    if (!token || this.taken().length) return false;
+    this.seats = { ranger: { token, conn }, predator: { token, conn } };
+    return true;
   }
 
   /** Seats a connection on a free side. A phone can only hold one seat. */
@@ -39,7 +48,7 @@ export class Seats {
   left(conn: number): Side | null {
     this.tokens.delete(conn);
     const side = this.sideOf(conn);
-    if (side) this.seats[side]!.conn = null;
+    for (const held of this.sidesOf(conn)) this.seats[held]!.conn = null;
     return side;
   }
 
@@ -53,6 +62,10 @@ export class Seats {
     if (this.seats.ranger?.conn === conn) return 'ranger';
     if (this.seats.predator?.conn === conn) return 'predator';
     return null;
+  }
+
+  sidesOf(conn: number): Side[] {
+    return (['ranger', 'predator'] as const).filter((side) => this.seats[side]?.conn === conn);
   }
 
   connOf(side: Side): number | null {

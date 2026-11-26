@@ -56,6 +56,45 @@ describe('Team Battle seats', () => {
     expect(seats.full()).toBe(false);
     expect(seats.taken()).toEqual([]);
   });
+
+  it('claims both teams atomically for one shared phone', () => {
+    const seats = new Seats();
+    expect(seats.claimBoth(1)).toBe(false);
+    seats.hello(1, 'shared');
+    expect(seats.claimBoth(1)).toBe(true);
+    expect(seats.sidesOf(1)).toEqual(['ranger', 'predator']);
+    expect(seats.full()).toBe(true);
+    seats.hello(2, 'other');
+    expect(seats.claimBoth(2)).toBe(false);
+    expect(seats.claim(2, 'ranger')).toBe(false);
+    expect(seats.sidesOf(2)).toEqual([]);
+  });
+
+  it('does not take over a seat when claiming both teams', () => {
+    const seats = new Seats();
+    seats.hello(1, 'first');
+    seats.hello(2, 'shared');
+    seats.claim(1, 'predator');
+    expect(seats.claimBoth(2)).toBe(false);
+    expect(seats.isTaken('ranger')).toBe(false);
+    expect(seats.connOf('predator')).toBe(1);
+  });
+
+  it('reclaims both shared seats after refresh or a relay restart', () => {
+    const seats = new Seats();
+    seats.hello(1, 'shared');
+    seats.claimBoth(1);
+    seats.left(1);
+    expect(seats.isAway('ranger')).toBe(true);
+    expect(seats.isAway('predator')).toBe(true);
+    seats.hello(2, 'shared');
+    expect(seats.sidesOf(2)).toEqual(['ranger', 'predator']);
+    seats.left(1); // A late close from the old connection must not unseat the replacement.
+    expect(seats.sidesOf(2)).toEqual(['ranger', 'predator']);
+    seats.disconnectAll();
+    seats.hello(3, 'shared');
+    expect(seats.sidesOf(3)).toEqual(['ranger', 'predator']);
+  });
 });
 
 describe('Team Battle votes', () => {
@@ -84,5 +123,17 @@ describe('phone message validation', () => {
     expect(parsePhoneMsg({ t: 'pick', round: 1, index: 1.5 })).toBe(null);
     expect(parsePhoneMsg({ t: 'hello', token: '' })).toBe(null);
     expect(parsePhoneMsg({ t: 'nope' })).toBe(null);
+  });
+
+  it('preserves side-specific shared controls and rejects invalid sides', () => {
+    expect(parsePhoneMsg({ t: 'claim', side: 'both' })).toEqual({ t: 'claim', side: 'both' });
+    expect(parsePhoneMsg({ t: 'pick', round: 0, index: 2, side: 'ranger' })).toEqual({ t: 'pick', round: 0, index: 2, side: 'ranger' });
+    expect(parsePhoneMsg({ t: 'next', round: 1, side: 'predator' })).toEqual({ t: 'next', round: 1, side: 'predator' });
+    expect(parsePhoneMsg({ t: 'rematch', side: 'ranger' })).toEqual({ t: 'rematch', side: 'ranger' });
+    for (const side of ['both', 'referee', null, 1]) {
+      expect(parsePhoneMsg({ t: 'pick', round: 0, index: 0, side })).toBe(null);
+      expect(parsePhoneMsg({ t: 'next', round: 0, side })).toBe(null);
+      expect(parsePhoneMsg({ t: 'rematch', side })).toBe(null);
+    }
   });
 });

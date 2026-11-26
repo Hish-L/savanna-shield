@@ -8,10 +8,12 @@ import type { Side } from '../game/types';
 /** Phone → screen. `token` is a random id the phone keeps so it can reclaim its seat. */
 export type PhoneMsg =
   | { t: 'hello'; token: string }
-  | { t: 'claim'; side: Side }
-  | { t: 'pick'; round: number; index: number }
-  | { t: 'next'; round: number }
-  | { t: 'rematch' };
+  | { t: 'claim'; side: Side | 'both' }
+  | { t: 'pick'; round: number; index: number; side?: Side }
+  | { t: 'next'; round: number; side?: Side }
+  | { t: 'rematch'; side?: Side };
+
+export type PhoneCount = 1 | 2;
 
 export type Outcome = 'blocked' | 'breach';
 
@@ -19,7 +21,11 @@ export type Outcome = 'blocked' | 'breach';
 export type PhoneView =
   /** Asks the phone to send `hello` (sent when the screen first sees a connection). */
   | { v: 'who' }
-  | { v: 'pick-side'; taken: Side[] }
+  | { v: 'pick-side'; taken: Side[]; phones: PhoneCount }
+  | { v: 'shared'; ranger: TeamView; predator: TeamView }
+  | TeamView;
+
+export type TeamView =
   | { v: 'waiting'; side?: Side; message: string }
   | {
       v: 'question';
@@ -63,17 +69,19 @@ export function parsePhoneMsg(raw: unknown): PhoneMsg | null {
   if (!raw || typeof raw !== 'object') return null;
   const m = raw as Record<string, unknown>;
   const int = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 0;
+  if (m.side !== undefined && !SIDES.includes(m.side as string) && !(m.t === 'claim' && m.side === 'both')) return null;
+  const side = m.side === undefined ? {} : { side: m.side as Side };
   switch (m.t) {
     case 'hello':
       return typeof m.token === 'string' && m.token.length > 0 && m.token.length <= 64 ? { t: 'hello', token: m.token } : null;
     case 'claim':
-      return SIDES.includes(m.side as string) ? { t: 'claim', side: m.side as Side } : null;
+      return m.side === 'both' || SIDES.includes(m.side as string) ? { t: 'claim', side: m.side as Side | 'both' } : null;
     case 'pick':
-      return int(m.round) && int(m.index) ? { t: 'pick', round: m.round as number, index: m.index as number } : null;
+      return int(m.round) && int(m.index) ? { t: 'pick', round: m.round as number, index: m.index as number, ...side } : null;
     case 'next':
-      return int(m.round) ? { t: 'next', round: m.round as number } : null;
+      return int(m.round) ? { t: 'next', round: m.round as number, ...side } : null;
     case 'rematch':
-      return { t: 'rematch' };
+      return { t: 'rematch', ...side };
     default:
       return null;
   }

@@ -154,3 +154,74 @@ body.offline .body { opacity: 0.5; pointer-events: none; }
   .col { display: flex; flex: 1; min-width: 0; flex-direction: column; justify-content: center; gap: 0.6rem; }
   .opt { min-height: 3rem; padding: 0.5rem 0.9rem; }
 }
+
+/* Shared controller: one scenario above two clearly separated team lanes. */
+.shared-welcome { display: flex; flex-direction: column; align-items: stretch; gap: 1.1rem; max-width: 32rem; margin: auto; }
+.setup-kicker { margin: 0; color: var(--best); font-size: 0.8rem; font-weight: 900; letter-spacing: 0.16em; text-align: center; }
+.shared-preview { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #77749c; border-radius: 1.3rem; overflow: hidden; }
+.shared-preview span { display: grid; place-items: center; gap: 0.4rem; padding: 1.2rem; background: #30204a; font-size: 2rem; }
+.shared-preview span + span { background: #3b3045; border-left: 2px solid #77749c; }
+.shared-preview b { font-size: 1rem; }
+.shared-badge { flex: none; padding: 0.3rem 0.6rem; border: 1px solid #77749c; border-radius: 999px; font-size: 0.7rem; font-weight: 800; color: var(--best); }
+.shared-phone #app { padding: max(0.6rem, env(safe-area-inset-top)) max(0.6rem, env(safe-area-inset-right)) max(0.6rem, env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-left)); border-top-color: var(--best); }
+.shared-phone header { margin-bottom: 0.65rem; }
+.shared-phone .title { font-size: 0.85rem; }
+.shared-phone .body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 0.7rem; }
+.shared-scenario { display: grid; gap: 0.6rem; }
+.shared-phone .situation { padding: 0.7rem 0.8rem; font-size: 0.9rem; border-width: 0.15rem; }
+.shared-phone .situation b { font-size: 1.2rem; margin-bottom: 0.2rem; }
+.shared-phone .stage { font-size: 0.7rem; letter-spacing: 0.07em; }
+.shared-phone .timer { height: 0.4rem; }
+.shared-phone .timer .fill { background: var(--best); }
+.shared-phone .timer .fill.urgent { background: #ff7a1a; }
+.shared-phone .read-hint { margin: 0; font-size: 0.7rem; }
+.split-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; }
+.split-team {
+  --accent: var(--wbc-red); --on-accent: #fff;
+  display: flex; flex-direction: column; gap: 0.65rem; min-width: 0; padding: 0.75rem 0.6rem;
+  border: 1px solid #755571; border-top: 0.25rem solid var(--accent); border-radius: 1rem; background: linear-gradient(155deg, #392144, #1e1b48);
+}
+.split-team.predator { --accent: var(--best); --on-accent: var(--wbc-navy-deep); border-color: #7d7050; border-top-color: var(--accent); background: linear-gradient(155deg, #3d3046, #1e1b48); }
+.split-heading { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 0.35rem; }
+.split-heading > span { grid-row: span 2; font-size: 1.2rem; }
+.split-heading h2 { font-size: 1rem; }
+.split-heading small { color: var(--accent); font-size: 0.6rem; font-weight: 900; letter-spacing: 0.12em; }
+.split-prompt { margin: 0; font-size: 0.85rem; line-height: 1.35; font-weight: 800; }
+.shared-phone .options { flex: 1; grid-template-rows: repeat(3, 1fr); gap: 0.5rem; }
+.shared-phone .opt { min-height: 3.3rem; gap: 0.4rem; padding: 0.55rem 0.45rem; border-width: 0.12rem; border-radius: 0.65rem; font-size: 0.8rem; line-height: 1.3; box-shadow: 0 0.18rem 0 #000; overflow-wrap: anywhere; }
+.shared-phone .opt kbd { width: 1.3rem; height: 1.5rem; font-size: 0.75rem; border-radius: 0.3rem; }
+.shared-phone .note { font-size: 0.7rem; }
+.shared-phone .options.locked + .note { animation: none; color: var(--accent); }
+.shared-phone .outcome { font-size: 1.5rem; }
+.shared-phone .pick { padding: 0.6rem; gap: 0.3rem; border-width: 0.12rem; border-radius: 0.7rem; }
+.shared-phone .pick b { font-size: 0.85rem; line-height: 1.35; }
+.shared-phone .pick em { font-size: 1.2rem; }
+.shared-phone .pick small { font-size: 0.6rem; }
+.shared-phone .best-tag { font-size: 0.8rem; }
+.shared-phone .vote { margin-top: auto; width: 100%; min-height: 44px; padding: 0.7rem 0.4rem; font-size: 0.85rem; letter-spacing: 0.04em; border-width: 0.12rem; }
+.shared-phone .waiting, .shared-phone .message.small { font-size: 0.75rem; }
+.shared-phone .scores { gap: 1rem; font-size: 0.8rem; }
+.shared-phone .scores b { color: #fff; font-size: 1.2rem; }
+.shared-phone .lesson { gap: 0.4rem; padding: 0.7rem; }
+.shared-phone .lesson p, .shared-phone .lesson p:last-child strong { font-size: 0.85rem; }
+.shared-phone .lesson p:last-child { font-size: 0.65rem; }
+.split-total { margin: 0.5rem 0; text-align: center; font-size: 3rem; font-weight: 900; color: var(--accent); }
+.split-total small { display: block; font-size: 0.65rem; letter-spacing: 0.15em; color: #fff; }
+@media (orientation: landscape) {
+  .shared-phone .body { max-width: 64rem; width: 100%; margin: auto; }
+  .shared-phone .shared-scenario { gap: 0.4rem; }
+  .shared-phone .situation b { display: inline; margin-right: 0.3rem; font-size: 1rem; }
+  .shared-phone .situation { padding: 0.5rem 0.7rem; font-size: 0.8rem; }
+  .shared-phone .split-team { padding: 0.6rem 0.7rem; gap: 0.5rem; }
+  .shared-phone .opt { min-height: 2.8rem; font-size: 0.9rem; }
+  .shared-phone .split-prompt { font-size: 0.9rem; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  :root.shared-controller { font-size: clamp(13px, 3.4vmin, 16px); }
+  .shared-phone #app { padding-top: max(0.4rem, env(safe-area-inset-top)); padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); }
+  .shared-phone header { margin-bottom: 0.4rem; }
+  .shared-phone .body { gap: 0.5rem; }
+  .shared-phone .split-team { padding: 0.5rem 0.6rem; gap: 0.4rem; }
+  .shared-phone .opt { min-height: 44px; padding: 0.4rem 0.5rem; }
+  .shared-phone .options { gap: 0.4rem; }
+}
